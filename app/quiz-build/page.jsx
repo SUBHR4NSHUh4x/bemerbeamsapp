@@ -75,6 +75,13 @@ function Page(props) {
     }
   }, [user?.id]);
 
+  // Ensure createdBy is set before allowing quiz creation
+  useEffect(() => {
+    if (isLoaded && user?.id) {
+      setNewQuiz(prev => ({ ...prev, createdBy: user.id }));
+    }
+  }, [isLoaded, user?.id]);
+
   console.log(newQuiz);
 
   useEffect(() => {

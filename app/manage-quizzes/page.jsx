@@ -8,6 +8,7 @@ import Link from "next/link";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEdit, faTrash, faEye, faPlus, faSearch, faChartLine, faUpload } from '@fortawesome/free-solid-svg-icons';
 import convertToFaIcons from '../convertToFaIcons';
+import QuizPreview from '../Components/QuizBuildPage/QuizPreview';
 
 export default function ManageQuizzesPage() {
   const { user, isLoaded } = useUser();
@@ -16,6 +17,7 @@ export default function ManageQuizzesPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [previewQuiz, setPreviewQuiz] = useState(null);
 
   useEffect(() => {
     if (isLoaded && !user) {
@@ -58,6 +60,10 @@ export default function ManageQuizzesPage() {
     } catch (error) {
       console.error('Error deleting quiz:', error);
     }
+  };
+
+  const handlePreviewQuiz = (quiz) => {
+    setPreviewQuiz(quiz);
   };
 
   const getTotalAttempts = (quiz) => {
@@ -301,6 +307,12 @@ export default function ManageQuizzesPage() {
                             <FontAwesomeIcon icon={faEdit} className="w-4 h-4" />
                           </button>
                           <button
+                            onClick={() => handlePreviewQuiz(quiz)}
+                            className="text-purple-600 hover:text-purple-900"
+                          >
+                            <FontAwesomeIcon icon={faEye} className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => setDeleteConfirm(quiz._id)}
                             className="text-red-600 hover:text-red-900"
                           >
@@ -348,6 +360,15 @@ export default function ManageQuizzesPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Quiz Preview Modal */}
+      {previewQuiz && (
+        <QuizPreview 
+          quiz={previewQuiz} 
+          isOpen={!!previewQuiz}
+          onClose={() => setPreviewQuiz(null)} 
+        />
       )}
     </div>
   );

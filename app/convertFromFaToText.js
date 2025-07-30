@@ -23,6 +23,62 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 
 function convertFromFaToText(icon) {
+  // Handle case where icon is already a string
+  if (typeof icon === 'string') {
+    return icon;
+  }
+  
+  // Handle case where icon is an object with iconName property
+  if (icon && icon.iconName) {
+    switch (icon.iconName) {
+      case 'code':
+        return 'faCode';
+      case 'flask':
+        return 'faFlask';
+      case 'book':
+        return 'faBook';
+      case 'globe':
+        return 'faGlobe';
+      case 'laptop-code':
+        return 'faLaptopCode';
+      case 'palette':
+        return 'faPalette';
+      case 'comments':
+        return 'faComments';
+      case 'phone-alt':
+        return 'faPhoneAlt';
+      case 'envelope':
+        return 'faEnvelope';
+      case 'share-alt':
+        return 'faShareAlt';
+      case 'search':
+        return 'faSearch';
+      case 'sliders-h':
+        return 'faSlidersH';
+      case 'filter':
+        return 'faFilter';
+      case 'sort':
+        return 'faSort';
+      case 'chart-pie':
+        return 'faChartPie';
+      case 'table':
+        return 'faTable';
+      case 'database':
+        return 'faDatabase';
+      case 'file-alt':
+        return 'faFileAlt';
+      case 'camera':
+        return 'faCamera';
+      case 'calculator':
+        return 'faCalculator';
+      case 'question':
+        return 'faQuestion';
+      default:
+        return 'faQuestion';
+    }
+  }
+  
+  // Fallback to object comparison (less reliable)
   if (icon === faCode) {
     return 'faCode';
   } else if (icon === faFlask) {
