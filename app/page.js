@@ -32,14 +32,14 @@ export default function HomePage() {
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
               <Image
-                src="/quizSpark_icon.png"
-                alt="Quiz Spark"
+                src="/biggies.png"
+                alt="BeamerBrands"
                 width={50}
                 height={50}
                 className="rounded-lg"
               />
               <h1 className="text-2xl font-bold text-gray-900">
-                Quiz <span className="text-yellow-500">Spark</span>
+                Quiz <span className="text-yellow-500">BeamerBrands</span>
               </h1>
             </div>
             
@@ -64,7 +64,7 @@ export default function HomePage() {
         <div className="text-center">
           <h1 className="text-5xl font-bold text-gray-900 mb-6">
             Interactive Learning with
-            <span className="text-yellow-500"> Quiz Spark</span>
+            <span className="text-yellow-500"> BeamerBrands</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
             Create engaging quizzes, track student progress, and make learning fun with our comprehensive quiz platform. 
@@ -131,14 +131,14 @@ export default function HomePage() {
           <div className="text-center">
             <div className="flex items-center justify-center space-x-4 mb-4">
               <Image
-                src="/quizSpark_icon.png"
-                alt="Quiz Spark"
+                src="/biggies.png"
+                alt="BeamerBrands"
                 width={40}
                 height={40}
                 className="rounded-lg"
               />
               <h3 className="text-xl font-bold">
-                Quiz <span className="text-yellow-500">Spark</span>
+                Quiz <span className="text-yellow-500">BeamerBrands</span>
               </h3>
             </div>
             <p className="text-gray-400 mb-4">

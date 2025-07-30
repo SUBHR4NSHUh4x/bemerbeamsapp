@@ -96,8 +96,8 @@ export default function ManageQuizzesPage() {
             <div className="flex items-center space-x-4">
               <Link href="/dashboard">
                 <Image
-                  src="/quizSpark_icon.png"
-                  alt="Quiz Spark"
+                  src="/biggies.png"
+                  alt="BeamerBrands"
                   width={50}
                   height={50}
                   className="rounded-lg cursor-pointer"

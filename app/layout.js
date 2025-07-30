@@ -13,8 +13,8 @@ const poppins = Poppins({
 });
 
 export const metadata = {
-  title: 'Quiz Spark - Interactive Learning Platform',
-  description: 'Create and take interactive quizzes with Quiz Spark',
+  title: 'BeamerBrands - Interactive Learning Platform',
+  description: 'Create and take interactive quizzes with BeamerBrands',
 };
 
 export default function RootLayout({ children }) {
@@ -22,7 +22,7 @@ export default function RootLayout({ children }) {
     <ClerkProvider>
       <html lang="en">
         <head>
-          <title>Quiz Spark</title>
+          <title>BeamerBrands</title>
         </head>
 
         <body className={poppins.variable}>

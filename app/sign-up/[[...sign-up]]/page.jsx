@@ -8,15 +8,15 @@ export default function SignUpPage() {
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <Image
-              src="/quizSpark_icon.png"
-              alt="Quiz Spark"
+              src="/biggies.png"
+              alt="BeamerBrands"
               width={80}
               height={80}
               className="rounded-lg"
             />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Join Quiz Spark
+            Join BeamerBrands
           </h1>
           <p className="text-gray-600">
             Create an account to start creating and taking quizzes

@@ -198,8 +198,8 @@ function QuizBuildNav({ newQuiz, setNewQuiz }) {
       <div className="flex justify-between items-center p-4 bg-white border-b border-gray-200">
         <div className="flex items-center space-x-4">
           <Image
-            src="/quizSpark_icon.png"
-            alt="Quiz Spark"
+            src="/biggies.png"
+            alt="BeamerBrands"
             width={40}
             height={40}
             className="rounded-lg"

@@ -44,14 +44,14 @@ export default function DashboardPage() {
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
               <Image
-                src="/quizSpark_icon.png"
-                alt="Quiz Spark"
+                src="/biggies.png"
+                alt="BeamerBrands"
                 width={50}
                 height={50}
                 className="rounded-lg"
               />
               <h1 className="text-2xl font-bold text-gray-900">
-                Quiz <span className="text-yellow-500">Spark</span>
+              Beamer<span className="text-yellow-500">Brands</span>
               </h1>
             </div>
             

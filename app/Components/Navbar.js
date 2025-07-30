@@ -29,14 +29,14 @@ export default function Navbar() {
           <span className="sr-only">Home</span>
           <div className="flex items-center gap-2">
             <Image
-              src="/quizSpark_icon.png"
+              src="/biggies.png"
               alt=""
               height={50}
               width={50}
               className="rounded-md"
             />
             <h2 className="text-2xl font-bold flex gap-2">
-              Quiz <span className="text-yellow-500">Spark</span>
+            Beamer<span className="text-yellow-500">Brands</span>
             </h2>
           </div>
         </a>

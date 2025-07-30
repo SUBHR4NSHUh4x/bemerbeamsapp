@@ -11,16 +11,20 @@ import {
   faEye,
   faDownload
 } from '@fortawesome/free-solid-svg-icons';
+import QuizResultsViewer from './QuizResultsViewer';
 
 export default function AnalyticsDashboard() {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('7d'); // 7d, 30d, 90d, 1y
   const [selectedQuiz, setSelectedQuiz] = useState('all');
+  // New state for results viewer
+  const [showResultsViewer, setShowResultsViewer] = useState(false);
+  const [selectedQuizForResults, setSelectedQuizForResults] = useState(null);
 
   useEffect(() => {
     fetchAnalytics();
-  }, [timeRange, selectedQuiz, fetchAnalytics]);
+  }, [timeRange, selectedQuiz]);
 
   const fetchAnalytics = async () => {
     setLoading(true);
@@ -35,6 +39,12 @@ export default function AnalyticsDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handler to open results viewer
+  const handleViewResults = (quizId) => {
+    setSelectedQuizForResults(quizId);
+    setShowResultsViewer(true);
   };
 
   if (loading) {
@@ -144,7 +154,7 @@ export default function AnalyticsDashboard() {
             Export Data
           </button>
         </div>
-        <QuizPerformanceTable data={analytics.quizPerformance} />
+        <QuizPerformanceTable data={analytics.quizPerformance} onViewResults={handleViewResults} />
       </div>
 
       {/* Student Performance */}
@@ -152,6 +162,12 @@ export default function AnalyticsDashboard() {
         <h2 className="text-xl font-semibold mb-4">Top Performers</h2>
         <StudentPerformanceTable data={analytics.topPerformers} />
       </div>
+      {showResultsViewer && (
+        <QuizResultsViewer
+          quizId={selectedQuizForResults}
+          onClose={() => setShowResultsViewer(false)}
+        />
+      )}
     </div>
   );
 }
@@ -229,7 +245,7 @@ function PerformanceChart({ data }) {
   );
 }
 
-function QuizPerformanceTable({ data }) {
+function QuizPerformanceTable({ data, onViewResults }) {
   if (!data || data.length === 0) {
     return <div className="text-center py-8 text-gray-500">No data available</div>;
   }
@@ -285,7 +301,7 @@ function QuizPerformanceTable({ data }) {
                 {quiz.averageTime} min
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <button className="text-yellow-600 hover:text-yellow-900 mr-3">
+                <button className="text-yellow-600 hover:text-yellow-900 mr-3" onClick={() => onViewResults && onViewResults(quiz._id)}>
                   <FontAwesomeIcon icon={faEye} />
                 </button>
                 <button className="text-blue-600 hover:text-blue-900">
