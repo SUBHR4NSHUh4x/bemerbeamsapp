@@ -95,7 +95,7 @@ function QuizBuildNav({ newQuiz, setNewQuiz }) {
 
       console.log('Creating quiz with data:', quizWithTextIcon);
 
-      const res = await fetch('http://localhost:3000/api/quizzes', {
+      const res = await fetch('/api/quizzes', {
         method: 'POST',
         headers: {
           'Content-type': 'application/json',
@@ -106,25 +106,25 @@ function QuizBuildNav({ newQuiz, setNewQuiz }) {
       if (!res.ok) {
         const errorData = await res.json();
         console.error('Quiz creation failed:', errorData);
-        toast.error(`Failed to create quiz: ${errorData.message || 'Unknown error'}`);
+        toast.error(`Failed to create test: ${errorData.message || 'Unknown error'}`);
         return;
       }
 
       const { id } = await res.json();
-      console.log('Quiz created with ID:', id);
+      console.log('Test created with ID:', id);
       
       // Update the _id property of the newQuiz object
       const updatedQuiz = { ...newQuiz, _id: id, icon: textIcon };
 
       setAllQuizzes([...allQuizzes, updatedQuiz]);
 
-      toast.success('The quiz has been created successfully!');
+      toast.success('The test has been created successfully!');
       
       // Redirect to manage quizzes page
       router.push('/manage-quizzes');
     } catch (error) {
       console.error('Error creating quiz:', error);
-      toast.error('Failed to create quiz. Please try again.');
+      toast.error('Failed to create test. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -159,7 +159,7 @@ function QuizBuildNav({ newQuiz, setNewQuiz }) {
         icon: textIcon,
       };
       
-      const res = await fetch(`http://localhost:3000/api/quizzes?id=${id}`, {
+      const res = await fetch(`/api/quizzes?id=${id}`, {
         method: 'PUT',
         headers: {
           'Content-type': 'application/json',
@@ -168,12 +168,12 @@ function QuizBuildNav({ newQuiz, setNewQuiz }) {
       });
 
       if (!res.ok) {
-        toast.error('Failed to update the quiz!');
+        toast.error('Failed to update the test!');
         return;
       }
 
       setAllQuizzes(updatedQuiz);
-      toast.success('The quiz has been updated successfully!');
+      toast.success('The test has been updated successfully!');
     } else {
       await createNewQuiz();
     }
@@ -204,7 +204,7 @@ function QuizBuildNav({ newQuiz, setNewQuiz }) {
             height={40}
             className="rounded-lg"
           />
-          <h1 className="text-xl font-bold text-gray-900">Quiz Builder</h1>
+          <h1 className="text-xl font-bold text-gray-900">Test Builder</h1>
         </div>
 
         <div className="flex items-center space-x-4">
@@ -213,7 +213,7 @@ function QuizBuildNav({ newQuiz, setNewQuiz }) {
             className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
           >
             <FontAwesomeIcon icon={faEye} className="w-4 h-4 mr-2" />
-            Preview Quiz
+            Preview Test
           </button>
           
           <button
@@ -222,7 +222,7 @@ function QuizBuildNav({ newQuiz, setNewQuiz }) {
             className="flex items-center px-6 py-2 bg-yellow-500 text-black rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50"
           >
             <FontAwesomeIcon icon={faSave} className="w-4 h-4 mr-2" />
-            {isLoading ? 'Saving...' : 'Save Quiz'}
+            {isLoading ? 'Saving...' : 'Save Test'}
           </button>
         </div>
       </div>
