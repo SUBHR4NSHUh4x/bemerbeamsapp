@@ -28,7 +28,7 @@ export default function ManageQuizzesPage() {
     // Fetch quizzes
     const fetchQuizzes = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/quizzes');
+        const response = await fetch('/api/quizzes');
         if (response.ok) {
           const data = await response.json();
           setQuizzes(data.quizzes || []);
@@ -49,7 +49,7 @@ export default function ManageQuizzesPage() {
 
   const handleDeleteQuiz = async (quizId) => {
     try {
-      const response = await fetch(`http://localhost:3000/api/quizzes?id=${quizId}`, {
+      const response = await fetch(`/api/quizzes?id=${quizId}`, {
         method: 'DELETE',
       });
 

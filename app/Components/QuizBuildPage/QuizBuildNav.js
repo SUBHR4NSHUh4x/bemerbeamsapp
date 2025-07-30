@@ -132,7 +132,7 @@ function QuizBuildNav({ newQuiz, setNewQuiz }) {
 
   async function saveQuiz() {
     if (newQuiz.quizTitle.trim(' ').length === 0) {
-      return toast.error('Please add a name for the quiz!');
+      return toast.error('Please add a name for the test!');
     }
 
     const isValid = validateQuizQuestions(newQuiz.quizQuestions);
@@ -181,7 +181,7 @@ function QuizBuildNav({ newQuiz, setNewQuiz }) {
 
   const handlePreview = () => {
     if (newQuiz.quizTitle.trim(' ').length === 0) {
-      return toast.error('Please add a name for the quiz!');
+      return toast.error('Please add a name for the test!');
     }
 
     const isValid = validateQuizQuestions(newQuiz.quizQuestions);
