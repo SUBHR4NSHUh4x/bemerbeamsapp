@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+  --mainCalor:rgb(255, 193, 7)
+ 
+}
+
+/* Light Colors Theme */
+/* ------------------- */
+
+/* Global Light Theme */
+.light-theme {
+  color: rgba(16, 16, 16);
+  background-color: white;
+}
+
+/* Categories */
+.light-theme .categories:hover{
+  border: 1px solid var(--mainCalor)
+}
+
+
+/* Buttons */
+.light-theme button{
+  background-color: var(--mainCalor)
+}
+
+
+
+/* ::::::::::::::::::::::::: */
+/* ::::::::::::::::::::::::: */
+
+/* Dark Colors Theme */
+
+.dark-theme {
+  color: rgba(255, 255, 255);
+  background-color: black;
+}
+
+/* Dark Theme Buttons */
+
+.dark-theme button{
+  background-color: var(--mainCalor);
+  color: black;
+}
+
+/* Categories */
+.dark-theme .categories:hover{
+  border: 1px solid var(--mainCalor);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  
+  }
+}
+
+body {
+ background-color: rgb(255, 255, 255);
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+.poppins{
+  font-family: var(--font-poppins);
+}
+
+ 
+.poppins-regular {
+  font-weight: 400; /* Regular weight */
+}
+
+.poppins-light {
+  font-weight: 300; /* Light weight */
+}
+
+.poppins-thin {
+  font-weight: 100; /* Thin weight */
+}
+
+.poppins-semibold {
+  font-weight: 600; /* Semibold weight */
+}
+
+.poppins-bold {
+  font-weight: 700; /* Bold weight */
+}
