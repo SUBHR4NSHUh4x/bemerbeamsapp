@@ -67,8 +67,7 @@ export default function HomePage() {
             <span className="text-yellow-500"> BeamerBrands</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Create engaging tests, track student progress, and make learning fun with our comprehensive test platform. 
-            Perfect for educators and students alike.
+            Create engaging tests, track employees progress, and make tests fun with our comprehensive test platform.
           </p>
           
           <div className="flex justify-center space-x-4 mb-12">
@@ -107,7 +106,7 @@ export default function HomePage() {
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Track Progress</h3>
             <p className="text-gray-600">
-              Monitor student performance with detailed analytics and progress tracking.
+              Monitor employees performance with detailed analytics and progress tracking.
             </p>
           </div>
 
