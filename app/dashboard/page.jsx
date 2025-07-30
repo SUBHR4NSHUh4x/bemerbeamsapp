@@ -98,7 +98,7 @@ export default function DashboardPage() {
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
-              Student
+              Employees
             </button>
             <button
               onClick={() => handleRoleChange('admin')}
@@ -125,8 +125,8 @@ export default function DashboardPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Take Quizzes</h3>
-                  <p className="text-gray-600">Browse and take available quizzes to test your knowledge</p>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Take Tests</h3>
+                  <p className="text-gray-600">Browse and take available tests to test your knowledge</p>
                 </div>
               </Link>
 
@@ -138,7 +138,7 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">My Progress</h3>
-                  <p className="text-gray-600">Track your quiz performance and learning progress</p>
+                  <p className="text-gray-600">Track your test performance and learning progress</p>
                 </div>
               </Link>
 
@@ -150,7 +150,7 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Leaderboard</h3>
-                  <p className="text-gray-600">See how you rank against other students</p>
+                  <p className="text-gray-600">See how you rank against other employees</p>
                 </div>
               </Link>
             </>
@@ -164,8 +164,8 @@ export default function DashboardPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Create Quiz</h3>
-                  <p className="text-gray-600">Build new quizzes with custom questions and answers</p>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Create Tests</h3>
+                  <p className="text-gray-600">Build new test with custom questions and answers</p>
                 </div>
               </Link>
 
@@ -176,8 +176,8 @@ export default function DashboardPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                     </svg>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Manage Quizzes</h3>
-                  <p className="text-gray-600">Edit, delete, and organize your created quizzes</p>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Manage Tests</h3>
+                  <p className="text-gray-600">Edit, delete, and organize your created tests</p>
                 </div>
               </Link>
 
@@ -189,7 +189,7 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Analytics</h3>
-                  <p className="text-gray-600">View detailed analytics and student performance</p>
+                  <p className="text-gray-600">View detailed analytics and employee performance</p>
                 </div>
               </Link>
             </>

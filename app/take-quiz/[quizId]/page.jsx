@@ -334,7 +334,7 @@ export default function TakeQuizPage() {
             onClick={() => router.push('/quizzes')}
             className="mt-4 bg-yellow-500 text-black px-4 py-2 rounded"
           >
-            Back to Quizzes
+            Back to Tests
           </button>
         </div>
       </div>
@@ -347,7 +347,7 @@ export default function TakeQuizPage() {
       <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-white p-8">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-lg shadow-lg p-8">
-            <h1 className="text-3xl font-bold text-center mb-8">Quiz Results</h1>
+            <h1 className="text-3xl font-bold text-center mb-8">Test Results</h1>
             
             <div className="text-center mb-8">
               <div className="text-6xl font-bold text-yellow-500 mb-4">{score}%</div>
@@ -380,7 +380,7 @@ export default function TakeQuizPage() {
                 onClick={() => router.push('/quizzes')}
                 className="bg-yellow-500 hover:bg-yellow-600 text-black px-6 py-3 rounded-lg font-medium"
               >
-                Take Another Quiz
+                Take Another Test
               </button>
               <button
                 onClick={() => router.push('/dashboard')}
@@ -473,7 +473,7 @@ export default function TakeQuizPage() {
                   onClick={handleSubmit}
                   className="px-6 py-3 bg-green-500 text-white rounded-lg"
                 >
-                  Submit Quiz
+                  Submit Test
                 </button>
               )}
             </div>

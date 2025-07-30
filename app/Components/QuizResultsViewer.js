@@ -21,7 +21,7 @@ export default function QuizResultsViewer({ quizId, onClose }) {
   const exportCSV = () => {
     if (!attempts.length) return;
     const header = [
-      'Student Name', 'Email', 'Score', 'Date', 'Duration (s)', 'Passed'
+      'Employee Name', 'Email', 'Score', 'Date', 'Duration (s)', 'Passed'
     ];
     const rows = attempts.map(a => [
       a.userName, a.userEmail, a.score, new Date(a.endTime).toLocaleString(), a.duration, a.passed ? 'Yes' : 'No'
@@ -73,7 +73,7 @@ export default function QuizResultsViewer({ quizId, onClose }) {
           <table className="min-w-full text-sm md:text-base">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-2 text-left">Student</th>
+                <th className="px-4 py-2 text-left">Employee</th>
                 <th className="px-4 py-2 text-left">Email</th>
                 <th className="px-4 py-2 text-center">Score</th>
                 <th className="px-4 py-2 text-center">Date</th>
@@ -117,7 +117,7 @@ export default function QuizResultsViewer({ quizId, onClose }) {
                               <tr>
                                 <th className="px-2 py-1 text-left">#</th>
                                 <th className="px-2 py-1 text-left">Question</th>
-                                <th className="px-2 py-1 text-left">Student Answer</th>
+                                <th className="px-2 py-1 text-left">Employee Answer</th>
                                 <th className="px-2 py-1 text-left">Correct Answer</th>
                                 <th className="px-2 py-1 text-center">Points</th>
                                 <th className="px-2 py-1 text-center">Time Spent (s)</th>

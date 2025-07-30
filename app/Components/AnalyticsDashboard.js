@@ -157,10 +157,10 @@ export default function AnalyticsDashboard() {
         <QuizPerformanceTable data={analytics.quizPerformance} onViewResults={handleViewResults} />
       </div>
 
-      {/* Student Performance */}
+      {/* Employee Performance */}
       <div className="bg-white rounded-lg shadow-lg p-6">
         <h2 className="text-xl font-semibold mb-4">Top Performers</h2>
-        <StudentPerformanceTable data={analytics.topPerformers} />
+        <EmployeePerformanceTable data={analytics.topPerformers} />
       </div>
       {showResultsViewer && (
         <QuizResultsViewer
@@ -316,7 +316,7 @@ function QuizPerformanceTable({ data, onViewResults }) {
   );
 }
 
-function StudentPerformanceTable({ data }) {
+function EmployeePerformanceTable({ data }) {
   if (!data || data.length === 0) {
     return <div className="text-center py-8 text-gray-500">No data available</div>;
   }
@@ -330,7 +330,7 @@ function StudentPerformanceTable({ data }) {
               Rank
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Student
+              Employee
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Quizzes Taken
@@ -347,7 +347,7 @@ function StudentPerformanceTable({ data }) {
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {data.map((student, index) => (
+          {data.map((employee, index) => (
             <tr key={index} className="hover:bg-gray-50">
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center">
@@ -364,20 +364,20 @@ function StudentPerformanceTable({ data }) {
                 </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                <div className="text-sm text-gray-500">{student.email}</div>
+                <div className="text-sm font-medium text-gray-900">{employee.name}</div>
+                <div className="text-sm text-gray-500">{employee.email}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {student.quizzesTaken}
+                {employee.quizzesTaken}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {student.averageScore}%
+                {employee.averageScore}%
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {student.bestScore}%
+                {employee.bestScore}%
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {student.totalTime} min
+                {employee.totalTime} min
               </td>
             </tr>
           ))}

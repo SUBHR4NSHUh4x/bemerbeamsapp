@@ -452,7 +452,7 @@ export default function QuizPreview({ quiz, isOpen, onClose }) {
           <div className="mt-6 p-4 bg-blue-50 rounded-lg">
             <h4 className="font-semibold text-blue-900 mb-2">Preview Mode</h4>
             <p className="text-blue-700 text-sm">
-              This is how your quiz will appear to students. You can navigate through questions and see the final results.
+              This is how your test will appear to employees. You can navigate through questions and see the final results.
             </p>
           </div>
         </div>

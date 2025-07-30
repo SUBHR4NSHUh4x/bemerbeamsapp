@@ -39,7 +39,7 @@ export default function HomePage() {
                 className="rounded-lg"
               />
               <h1 className="text-2xl font-bold text-gray-900">
-                Quiz <span className="text-yellow-500">BeamerBrands</span>
+                Test <span className="text-yellow-500">BeamerBrands</span>
               </h1>
             </div>
             
@@ -67,14 +67,14 @@ export default function HomePage() {
             <span className="text-yellow-500"> BeamerBrands</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Create engaging quizzes, track student progress, and make learning fun with our comprehensive quiz platform. 
+            Create engaging tests, track student progress, and make learning fun with our comprehensive test platform. 
             Perfect for educators and students alike.
           </p>
           
           <div className="flex justify-center space-x-4 mb-12">
             <Link href="/sign-up">
               <button className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium py-3 px-8 rounded-lg transition-colors text-lg">
-                Start Creating Quizzes
+                Start Creating Tests
               </button>
             </Link>
             <Link href="/sign-in">
@@ -93,9 +93,9 @@ export default function HomePage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Create Quizzes</h3>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Create Tests</h3>
             <p className="text-gray-600">
-              Build custom quizzes with multiple choice questions, images, and detailed analytics.
+              Build custom tests with multiple choice questions, images, and detailed analytics.
             </p>
           </div>
 
@@ -138,7 +138,7 @@ export default function HomePage() {
                 className="rounded-lg"
               />
               <h3 className="text-xl font-bold">
-                Quiz <span className="text-yellow-500">BeamerBrands</span>
+                Test <span className="text-yellow-500">BeamerBrands</span>
               </h3>
             </div>
             <p className="text-gray-400 mb-4">

@@ -53,7 +53,7 @@ export default function BulkUploadPage() {
               <Link href="/manage-quizzes">
                 <button className="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center">
                   <FontAwesomeIcon icon={faArrowLeft} className="w-4 h-4 mr-2" />
-                  Back to Quizzes
+                  Back to Tests
                 </button>
               </Link>
               <div className="text-right">

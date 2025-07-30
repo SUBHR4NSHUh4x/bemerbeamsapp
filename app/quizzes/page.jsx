@@ -74,7 +74,7 @@ export default function QuizzesPage() {
                 />
               </Link>
               <h1 className="text-2xl font-bold text-gray-900">
-                Available Quizzes
+                Available Tests
               </h1>
             </div>
             
@@ -83,7 +83,7 @@ export default function QuizzesPage() {
                 <p className="text-sm font-medium text-gray-900">
                   {user.firstName} {user.lastName}
                 </p>
-                <p className="text-xs text-gray-500">Student</p>
+                <p className="text-xs text-gray-500">Employees</p>
               </div>
             </div>
           </div>
@@ -112,7 +112,7 @@ export default function QuizzesPage() {
           </div>
         </div>
 
-        {/* Quizzes Grid */}
+        {/* Tests Grid */}
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-yellow-500"></div>
@@ -178,7 +178,7 @@ export default function QuizzesPage() {
                     className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
                   >
                     <FontAwesomeIcon icon={faPlay} className="w-4 h-4 mr-2" />
-                    Start Quiz
+                    Start Test
                   </button>
                 </div>
               </div>

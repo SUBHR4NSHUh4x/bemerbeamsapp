@@ -44,7 +44,7 @@ export default function TestRoleChange() {
               disabled={updating}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50 mr-2"
             >
-              Set to Student
+              Set to Employees
             </button>
             
             <button

@@ -14,7 +14,7 @@ const poppins = Poppins({
 
 export const metadata = {
   title: 'BeamerBrands - Interactive Learning Platform',
-  description: 'Create and take interactive quizzes with BeamerBrands',
+  description: 'Create and take interactive tests with BeamerBrands',
 };
 
 export default function RootLayout({ children }) {

@@ -104,7 +104,7 @@ export default function ManageQuizzesPage() {
                 />
               </Link>
               <h1 className="text-2xl font-bold text-gray-900">
-                Manage Quizzes
+                Manage Tests
               </h1>
             </div>
             
@@ -118,7 +118,7 @@ export default function ManageQuizzesPage() {
               <Link href="/quiz-build">
                 <button className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium py-2 px-4 rounded-lg transition-colors flex items-center">
                   <FontAwesomeIcon icon={faPlus} className="w-4 h-4 mr-2" />
-                  Create New Quiz
+                  Create New Test
                 </button>
               </Link>
               <Link href="/bulk-upload">
@@ -146,7 +146,7 @@ export default function ManageQuizzesPage() {
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search your quizzes..."
+                placeholder="Search your tests..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full px-4 py-3 pl-10 pr-4 text-gray-900 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
@@ -166,7 +166,7 @@ export default function ManageQuizzesPage() {
                 <FontAwesomeIcon icon={faEye} className="w-6 h-6 text-yellow-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Quizzes</p>
+                <p className="text-sm font-medium text-gray-600">Total Tests</p>
                 <p className="text-2xl font-semibold text-gray-900">{quizzes.length}</p>
               </div>
             </div>
@@ -217,7 +217,7 @@ export default function ManageQuizzesPage() {
           </div>
         </div>
 
-        {/* Quizzes Table */}
+        {/* Tests Table */}
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-yellow-500"></div>
@@ -227,14 +227,14 @@ export default function ManageQuizzesPage() {
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <FontAwesomeIcon icon={faEye} className="w-12 h-12 text-gray-400" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No quizzes found</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No tests found</h3>
             <p className="text-gray-600 mb-4">
-              {searchTerm ? 'Try adjusting your search terms.' : 'You haven\'t created any quizzes yet.'}
+              {searchTerm ? 'Try adjusting your search terms.' : 'You haven\'t created any tests yet.'}
             </p>
             {!searchTerm && (
               <Link href="/quiz-build">
                 <button className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium py-2 px-4 rounded-lg transition-colors">
-                  Create Your First Quiz
+                  Create Your First Test
                 </button>
               </Link>
             )}
@@ -246,7 +246,7 @@ export default function ManageQuizzesPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Quiz
+                      Test
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Questions
@@ -337,10 +337,10 @@ export default function ManageQuizzesPage() {
               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
                 <FontAwesomeIcon icon={faTrash} className="w-6 h-6 text-red-600" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mt-4">Delete Quiz</h3>
+              <h3 className="text-lg font-medium text-gray-900 mt-4">Delete Test</h3>
               <div className="mt-2 px-7 py-3">
                 <p className="text-sm text-gray-500">
-                  Are you sure you want to delete this quiz? This action cannot be undone.
+                  Are you sure you want to delete this test? This action cannot be undone.
                 </p>
               </div>
               <div className="flex justify-center space-x-4 mt-4">
@@ -362,7 +362,7 @@ export default function ManageQuizzesPage() {
         </div>
       )}
 
-      {/* Quiz Preview Modal */}
+      {/* Test Preview Modal */}
       {previewQuiz && (
         <QuizPreview 
           quiz={previewQuiz} 
