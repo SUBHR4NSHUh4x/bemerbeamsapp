@@ -17,6 +17,7 @@ export default function TakeQuizPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [quizStartTime, setQuizStartTime] = useState(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -57,6 +58,7 @@ export default function TakeQuizPage() {
         const quizData = await response.json();
         setQuiz(quizData);
         setTimeLeft(quizData.timeLimit * 60); // Convert minutes to seconds
+        setQuizStartTime(new Date().toISOString()); // Set start time when quiz loads
       } else {
         setError('Quiz not found');
       }
@@ -169,12 +171,22 @@ export default function TakeQuizPage() {
       answers,
     };
 
+    console.log('Saving quiz attempt:', attemptPayload);
+
     try {
-      await fetch('/api/quiz-attempts', {
+      const response = await fetch('/api/quiz-attempts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(attemptPayload),
       });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Quiz attempt saved successfully:', result);
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to save quiz attempt:', errorData);
+      }
     } catch (e) {
       console.error('Failed to save quiz attempt:', e);
     }
