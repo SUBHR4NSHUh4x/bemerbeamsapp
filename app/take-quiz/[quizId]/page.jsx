@@ -144,8 +144,40 @@ export default function TakeQuizPage() {
     results.correctAnswers = correctAnswers;
     results.totalQuestions = quiz.quizQuestions.length;
 
-    // Here you would typically save results to database
-    console.log('Quiz Results:', results);
+    // Build answers array for backend
+    const answers = quiz.quizQuestions.map((question, index) => ({
+      questionId: question._id,
+      questionText: question.question,
+      studentAnswer: userAnswers[index] || '',
+      correctAnswer: question.correctAnswer,
+      points: question.points || 1,
+      timeSpent: 0, // Optional: track per-question time if available
+      isCorrect: (userAnswers[index] || '').toLowerCase().trim() === (question.correctAnswer || '').toLowerCase().trim(),
+    }));
+
+    // Prepare payload for backend
+    const attemptPayload = {
+      quizId: quiz._id,
+      userId: user?.id,
+      userName: user?.firstName + ' ' + user?.lastName,
+      userEmail: user?.primaryEmailAddress?.emailAddress || user?.email,
+      score,
+      passed: score >= (quiz.passingScore || 70),
+      startTime: quizStartTime,
+      endTime: new Date().toISOString(),
+      duration: (quiz.timeLimit * 60) - timeLeft,
+      answers,
+    };
+
+    try {
+      await fetch('/api/quiz-attempts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(attemptPayload),
+      });
+    } catch (e) {
+      console.error('Failed to save quiz attempt:', e);
+    }
   };
 
   const formatTime = (seconds) => {

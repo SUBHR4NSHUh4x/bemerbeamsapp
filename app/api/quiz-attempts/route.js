@@ -17,3 +17,15 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Failed to fetch quiz attempts' }, { status: 500 });
   }
 }
+
+export async function POST(request) {
+  await connectToDB();
+  try {
+    const data = await request.json();
+    const attempt = await QuizAttempt.create(data);
+    return NextResponse.json({ success: true, attempt });
+  } catch (error) {
+    console.error('QuizAttempts API POST error:', error);
+    return NextResponse.json({ error: 'Failed to save quiz attempt' }, { status: 500 });
+  }
+}
