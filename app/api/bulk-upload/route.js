@@ -30,19 +30,87 @@ export async function POST(request) {
       );
     }
 
+    // Validate createdBy
+    if (!createdBy) {
+      return NextResponse.json(
+        { error: 'User authentication required' },
+        { status: 400 }
+      );
+    }
+
     // Convert file to buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Parse Excel/CSV file
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(worksheet);
+    // Parse Excel/CSV file with error handling
+    let workbook, data;
+    try {
+      workbook = XLSX.read(buffer, { 
+        type: 'buffer',
+        cellDates: true,
+        cellNF: false,
+        cellText: false
+      });
+      
+      if (workbook.SheetNames.length === 0) {
+        return NextResponse.json(
+          { error: 'No sheets found in the file' },
+          { status: 400 }
+        );
+      }
 
-    if (data.length === 0) {
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      data = XLSX.utils.sheet_to_json(worksheet, { 
+        header: 1,
+        defval: '',
+        blankrows: false
+      });
+
+      // Remove empty rows
+      data = data.filter(row => row.some(cell => cell !== ''));
+
+      if (data.length === 0) {
+        return NextResponse.json(
+          { error: 'No data found in file' },
+          { status: 400 }
+        );
+      }
+
+      // Check if first row contains headers
+      const firstRow = data[0];
+      const hasHeaders = firstRow.some(cell => 
+        typeof cell === 'string' && 
+        ['question', 'type', 'choices', 'correctanswer', 'explanation', 'points', 'timelimit'].includes(cell.toLowerCase())
+      );
+
+      if (hasHeaders) {
+        // Convert to objects with headers
+        const headers = data[0];
+        data = data.slice(1).map(row => {
+          const obj = {};
+          headers.forEach((header, index) => {
+            obj[header] = row[index] || '';
+          });
+          return obj;
+        });
+      } else {
+        // Assume first row is data and use default column order
+        data = data.map(row => ({
+          Question: row[0] || '',
+          Type: row[1] || 'mcq',
+          Choices: row[2] || '',
+          CorrectAnswer: row[3] || '',
+          Explanation: row[4] || '',
+          Points: row[5] || '1',
+          TimeLimit: row[6] || '30'
+        }));
+      }
+
+    } catch (parseError) {
+      console.error('File parsing error:', parseError);
       return NextResponse.json(
-        { error: 'No data found in file' },
+        { error: 'Failed to parse file. Please ensure it\'s a valid Excel or CSV file.' },
         { status: 400 }
       );
     }
@@ -50,17 +118,25 @@ export async function POST(request) {
     // Validate and transform data
     const questions = [];
     const errors = [];
+    const warnings = [];
 
     data.forEach((row, index) => {
       try {
+        // Normalize column names (case-insensitive)
+        const normalizedRow = {};
+        Object.keys(row).forEach(key => {
+          const normalizedKey = key.toLowerCase().replace(/\s+/g, '');
+          normalizedRow[normalizedKey] = row[key];
+        });
+
         // Expected columns: Question, Type, Choices, CorrectAnswer, Explanation, Points, TimeLimit
         const question = {
-          type: row.Type?.toLowerCase() || 'mcq',
-          question: row.Question?.trim(),
-          correctAnswer: row.CorrectAnswer?.toString().trim(),
-          explanation: row.Explanation?.trim() || '',
-          points: parseInt(row.Points) || 1,
-          timeLimit: parseInt(row.TimeLimit) || 30,
+          type: (normalizedRow.type || normalizedRow.questiontype || 'mcq').toLowerCase(),
+          question: (normalizedRow.question || '').toString().trim(),
+          correctAnswer: (normalizedRow.correctanswer || normalizedRow.correct || '').toString().trim(),
+          explanation: (normalizedRow.explanation || '').toString().trim(),
+          points: parseInt(normalizedRow.points || '1') || 1,
+          timeLimit: parseInt(normalizedRow.timelimit || normalizedRow.timelimit || '30') || 30,
           choices: [],
           answeredResult: -1,
           statistics: {
@@ -81,10 +157,22 @@ export async function POST(request) {
           return;
         }
 
+        // Validate question type
+        const validTypes = ['mcq', 'multiplechoice', 'true_false', 'truefalse', 'text', 'fill_blank', 'fillblank'];
+        if (!validTypes.includes(question.type)) {
+          warnings.push(`Row ${index + 1}: Invalid question type "${question.type}", defaulting to MCQ`);
+          question.type = 'mcq';
+        }
+
+        // Normalize question type
+        if (question.type === 'multiplechoice') question.type = 'mcq';
+        if (question.type === 'truefalse') question.type = 'true_false';
+        if (question.type === 'fillblank') question.type = 'fill_blank';
+
         // Handle different question types
         if (question.type === 'mcq') {
           // Parse choices (comma-separated or multiple columns)
-          const choicesText = row.Choices || '';
+          const choicesText = normalizedRow.choices || '';
           const choices = choicesText.split(',').map(choice => choice.trim()).filter(Boolean);
           
           if (choices.length < 2) {
@@ -94,12 +182,28 @@ export async function POST(request) {
 
           question.choices = choices.map(choice => ({
             text: choice,
-            isCorrect: choice === question.correctAnswer,
+            isCorrect: choice.toLowerCase() === question.correctAnswer.toLowerCase(),
           }));
+
+          // Validate that correct answer matches one of the choices
+          const correctChoiceExists = question.choices.some(choice => 
+            choice.text.toLowerCase() === question.correctAnswer.toLowerCase()
+          );
+          
+          if (!correctChoiceExists) {
+            errors.push(`Row ${index + 1}: Correct answer "${question.correctAnswer}" must match one of the choices`);
+            return;
+          }
         } else if (question.type === 'true_false') {
+          const correctAnswer = question.correctAnswer.toLowerCase();
+          if (!['true', 'false'].includes(correctAnswer)) {
+            errors.push(`Row ${index + 1}: True/False questions must have "True" or "False" as correct answer`);
+            return;
+          }
+
           question.choices = [
-            { text: 'True', isCorrect: question.correctAnswer.toLowerCase() === 'true' },
-            { text: 'False', isCorrect: question.correctAnswer.toLowerCase() === 'false' },
+            { text: 'True', isCorrect: correctAnswer === 'true' },
+            { text: 'False', isCorrect: correctAnswer === 'false' },
           ];
         } else if (question.type === 'fill_blank') {
           // For fill in the blank, correct answer is the expected text
@@ -120,8 +224,16 @@ export async function POST(request) {
         { 
           error: 'Validation errors found',
           details: errors,
+          warnings: warnings,
           validQuestions: questions.length 
         },
+        { status: 400 }
+      );
+    }
+
+    if (questions.length === 0) {
+      return NextResponse.json(
+        { error: 'No valid questions found in the file' },
         { status: 400 }
       );
     }
@@ -145,9 +257,13 @@ export async function POST(request) {
         category,
         difficulty,
         createdBy,
-        icon: 'fas fa-question',
+        icon: 'faQuestion',
         quizQuestions: questions,
         tags: [category],
+        timeLimit: 30,
+        passingScore: 70,
+        isActive: true,
+        isPublic: true,
       });
     }
 
@@ -156,14 +272,16 @@ export async function POST(request) {
     return NextResponse.json({
       message: 'Questions uploaded successfully',
       quizId: quiz._id,
+      quizTitle: quiz.quizTitle,
       totalQuestions: quiz.quizQuestions.length,
       uploadedQuestions: questions.length,
+      warnings: warnings.length > 0 ? warnings : undefined,
     });
 
   } catch (error) {
     console.error('Bulk upload error:', error);
     return NextResponse.json(
-      { error: 'Failed to process file' },
+      { error: 'Failed to process file. Please check the file format and try again.' },
       { status: 500 }
     );
   }
