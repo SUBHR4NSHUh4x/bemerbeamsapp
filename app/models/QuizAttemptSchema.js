@@ -15,6 +15,7 @@ const quizAttemptSchema = new Schema({
   userId: { type: String, required: true }, // Clerk user ID or email
   userName: { type: String, required: true },
   userEmail: { type: String, required: true },
+  storeName: { type: String, default: '' }, // Store name for employee identification
   score: { type: Number, required: true },
   passed: { type: Boolean, required: true },
   startTime: { type: Date, required: true },

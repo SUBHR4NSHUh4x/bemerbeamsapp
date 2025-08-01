@@ -19,10 +19,17 @@ export default function TakeQuizPage() {
   const [error, setError] = useState(null);
   const [quizStartTime, setQuizStartTime] = useState(null);
 
-  // Redirect if not authenticated
+  // Check for user info from session storage (for non-authenticated access)
+  const [userInfo, setUserInfo] = useState(null);
+
   useEffect(() => {
-    if (isLoaded && !user) {
-      router.push('/sign-in');
+    // Check if user info exists in session storage (for test access without authentication)
+    const storedUserInfo = sessionStorage.getItem('quizUserInfo');
+    if (storedUserInfo) {
+      setUserInfo(JSON.parse(storedUserInfo));
+    } else if (isLoaded && !user) {
+      // If no stored user info and not authenticated, redirect to test access page
+      router.push('/test-access');
     }
   }, [isLoaded, user, router]);
 
@@ -33,12 +40,13 @@ export default function TakeQuizPage() {
     }
   }, [quizId]);
 
-  // Timer effect
+  // Timer effect with auto-submit
   useEffect(() => {
     if (quiz && timeLeft !== null && timeLeft > 0 && !isSubmitted) {
       const timer = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
+            // Auto-submit when timer expires
             handleSubmit();
             return 0;
           }
@@ -160,9 +168,10 @@ export default function TakeQuizPage() {
     // Prepare payload for backend
     const attemptPayload = {
       quizId: quiz._id,
-      userId: user?.id,
-      userName: user?.firstName + ' ' + user?.lastName,
-      userEmail: user?.primaryEmailAddress?.emailAddress || user?.email,
+      userId: user?.id || userInfo?.email || 'anonymous',
+      userName: user?.firstName + ' ' + user?.lastName || userInfo?.name || 'Anonymous User',
+      userEmail: user?.primaryEmailAddress?.emailAddress || user?.email || userInfo?.email || '',
+      storeName: userInfo?.storeName || '',
       score,
       passed: score >= (quiz.passingScore || 70),
       startTime: quizStartTime,
@@ -356,7 +365,8 @@ export default function TakeQuizPage() {
     );
   }
 
-  if (!user) {
+  // Check if user is authenticated or has user info from session storage
+  if (!user && !userInfo) {
     return null;
   }
 
@@ -421,16 +431,22 @@ export default function TakeQuizPage() {
 
             <div className="flex justify-center space-x-4">
               <button
-                onClick={() => router.push('/quizzes')}
+                onClick={() => {
+                  sessionStorage.removeItem('quizUserInfo');
+                  router.push('/test-access');
+                }}
                 className="bg-yellow-500 hover:bg-yellow-600 text-black px-6 py-3 rounded-lg font-medium"
               >
                 Take Another Test
               </button>
               <button
-                onClick={() => router.push('/dashboard')}
+                onClick={() => {
+                  sessionStorage.removeItem('quizUserInfo');
+                  router.push('/');
+                }}
                 className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium"
               >
-                Back to Dashboard
+                Back to Home
               </button>
             </div>
           </div>

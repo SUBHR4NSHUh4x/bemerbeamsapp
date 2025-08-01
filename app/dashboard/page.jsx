@@ -90,26 +90,21 @@ export default function DashboardPage() {
         {/* Role Selection */}
         <div className="mb-8">
           <div className="flex justify-center space-x-4">
-            <button
-              onClick={() => handleRoleChange('student')}
-              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                currentRole === 'student'
-                  ? 'bg-yellow-500 text-black'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              Employees
-            </button>
-            <button
-              onClick={() => handleRoleChange('admin')}
-              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                currentRole === 'admin'
-                  ? 'bg-yellow-500 text-black'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              Admin
-            </button>
+            <Link href="/employee">
+              <button className="px-6 py-3 rounded-lg font-medium transition-colors bg-yellow-500 text-black hover:bg-yellow-600">
+                Employee Portal
+              </button>
+            </Link>
+            <Link href="/admin">
+              <button className="px-6 py-3 rounded-lg font-medium transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300">
+                Admin Portal
+              </button>
+            </Link>
+            <Link href="/test-access">
+              <button className="px-6 py-3 rounded-lg font-medium transition-colors bg-green-500 text-white hover:bg-green-600">
+                Quick Test Access
+              </button>
+            </Link>
           </div>
         </div>
 

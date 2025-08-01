@@ -2,7 +2,38 @@
 
 A comprehensive quiz application built with Next.js, featuring authentication, admin and student panels, and interactive quiz creation and taking capabilities.
 
-## Features
+## 🚀 New Features (Latest Update)
+
+### 🔐 Enhanced Security & Access Control
+- **Separate Admin & Employee Portals**: Dedicated routes for different user types
+- **Admin Authentication**: Secure admin access with username/password prompt
+- **Role-Based Access**: Proper separation of admin and employee functionalities
+- **Quick Test Access**: Non-authenticated test access via name and store name
+
+### ✏️ Manual Answer Sheet Editing
+- **View & Edit Results**: Admins can manually review and edit test results
+- **Answer Override**: Toggle correct/incorrect status for individual questions
+- **Score Recalculation**: Automatic score updates based on manual changes
+- **Detailed Review Interface**: Side-by-side comparison of student and correct answers
+
+### 📊 Enhanced Results Management
+- **Comprehensive Results Table**: Employee name, store name, marks secured, total marks
+- **Filter by Quiz**: Easy filtering of results by specific tests
+- **Export Functionality**: CSV export with detailed results
+- **Real-time Updates**: Instant updates when results are modified
+
+### 🧾 Flexible Test Access
+- **Name & Store Access**: Employees can access tests using name and store name
+- **Optional Email**: Email is optional for record-keeping purposes
+- **Session Management**: Secure session storage for test access
+- **Auto-Submit**: Automatic test submission when timer expires
+
+### ⏱️ Auto-Submit Feature
+- **Timer Expiry**: Automatic submission when countdown reaches zero
+- **User Notification**: Clear notification when auto-submit occurs
+- **Progress Preservation**: All answers are saved before auto-submission
+
+## Core Features
 
 ### 🔐 Authentication System
 - **Clerk Integration**: Secure authentication with Clerk
@@ -122,6 +153,12 @@ app/
 3. Role-based access control (Admin/Student)
 4. Persistent authentication state
 
+### Access Control
+1. **Admin Portal** (`/admin`): Secure admin access with authentication prompt
+2. **Employee Portal** (`/employee`): Dedicated employee interface
+3. **Quick Test Access** (`/test-access`): Non-authenticated test access
+4. **Test Results** (`/test-results`): Admin-only results management
+
 ### Quiz System
 - **Creation**: Admins can create quizzes with multiple question types
 - **Bulk Upload**: Import questions from Excel/CSV files
@@ -129,11 +166,19 @@ app/
 - **Scoring**: Automatic scoring and progress tracking
 - **Analytics**: Detailed performance metrics and insights
 - **Advanced Features**: Question flagging, detailed explanations, time tracking
+- **Auto-Submit**: Automatic submission when timer expires
+
+### Results Management
+- **Manual Editing**: Admins can override individual question results
+- **Score Recalculation**: Automatic score updates based on manual changes
+- **Comprehensive Tables**: Detailed results with employee and store information
+- **Export Functionality**: CSV export with all result data
 
 ### User Management
 - **Profiles**: Extended user profiles with preferences
 - **Roles**: Flexible role system for different user types
 - **Statistics**: Track user engagement and performance
+- **Store Information**: Track employee store assignments
 
 ## API Endpoints
 
@@ -142,6 +187,13 @@ app/
 - `POST /api/quizzes` - Create new quiz
 - `PUT /api/quizzes` - Update quiz
 - `DELETE /api/quizzes` - Delete quiz
+
+### Quiz Attempts
+- `GET /api/quiz-attempts` - Fetch attempts for a specific quiz
+- `GET /api/quiz-attempts/all` - Fetch all attempts with quiz data
+- `POST /api/quiz-attempts` - Create new quiz attempt
+- `PUT /api/quiz-attempts/[attemptId]` - Update quiz attempt (for manual editing)
+- `DELETE /api/quiz-attempts/[attemptId]` - Delete quiz attempt
 
 ### User Profile
 - `GET /api/user-profile` - Fetch user profile

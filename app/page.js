@@ -76,6 +76,11 @@ export default function HomePage() {
                 Start Creating Tests
               </button>
             </Link>
+            <Link href="/test-access">
+              <button className="bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-8 rounded-lg transition-colors text-lg">
+                Quick Test Access
+              </button>
+            </Link>
             <Link href="/sign-in">
               <button className="border border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-black font-medium py-3 px-8 rounded-lg transition-colors text-lg">
                 Sign In
