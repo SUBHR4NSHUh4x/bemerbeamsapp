@@ -11,7 +11,6 @@ export default function TakeQuizPage() {
   const router = useRouter();
   
   const [quiz, setQuiz] = useState(null);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -58,6 +57,20 @@ export default function TakeQuizPage() {
     }
   }, [quiz, timeLeft, isSubmitted]);
 
+  // Prevent leaving the test without submitting
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (!isSubmitted) {
+        e.preventDefault();
+        e.returnValue = 'Are you sure you want to leave? Your progress will be lost.';
+        return 'Are you sure you want to leave? Your progress will be lost.';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isSubmitted]);
+
   const fetchQuiz = async () => {
     try {
       setLoading(true);
@@ -77,127 +90,92 @@ export default function TakeQuizPage() {
     }
   };
 
-  const handleAnswerSelect = (answer) => {
+  const handleAnswerSelect = (questionIndex, answer) => {
     setUserAnswers(prev => ({
       ...prev,
-      [currentQuestionIndex]: answer
+      [questionIndex]: answer
     }));
   };
 
-  const handleTextAnswer = (answer) => {
+  const handleTextAnswer = (questionIndex, answer) => {
     setUserAnswers(prev => ({
       ...prev,
-      [currentQuestionIndex]: answer
+      [questionIndex]: answer
     }));
-  };
-
-  const handleNext = () => {
-    if (currentQuestionIndex < quiz.quizQuestions.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(prev => prev - 1);
-    }
   };
 
   const handleSubmit = async () => {
-    setIsSubmitted(true);
-    
-    // Calculate results
-    const results = {
-      quizId: quiz._id,
-      userId: user?.id,
-      answers: userAnswers,
-      timeSpent: (quiz.timeLimit * 60) - timeLeft,
-      submittedAt: new Date().toISOString()
-    };
-
-    // Calculate score
-    let correctAnswers = 0;
-    quiz.quizQuestions.forEach((question, index) => {
-      const userAnswer = userAnswers[index];
-      if (!userAnswer) return;
-
-      switch (question.type) {
-        case 'mcq':
-          if (userAnswer === question.correctAnswer) {
-            correctAnswers++;
-          }
-          break;
-        case 'text':
-          if (userAnswer.toLowerCase().trim() === question.correctAnswer.toLowerCase().trim()) {
-            correctAnswers++;
-          }
-          break;
-        case 'true_false':
-          if (userAnswer === question.correctAnswer) {
-            correctAnswers++;
-          }
-          break;
-        case 'fill_blank':
-          if (userAnswer.toLowerCase().trim() === question.correctAnswer.toLowerCase().trim()) {
-            correctAnswers++;
-          }
-          break;
-        default:
-          if (userAnswer === question.correctAnswer) {
-            correctAnswers++;
-          }
-      }
-    });
-
-    const score = Math.round((correctAnswers / quiz.quizQuestions.length) * 100);
-    results.score = score;
-    results.correctAnswers = correctAnswers;
-    results.totalQuestions = quiz.quizQuestions.length;
-
-    // Build answers array for backend
-    const answers = quiz.quizQuestions.map((question, index) => ({
-      questionId: question._id,
-      questionText: question.question,
-      studentAnswer: userAnswers[index] || '',
-      correctAnswer: question.correctAnswer,
-      points: question.points || 1,
-      timeSpent: 0, // Optional: track per-question time if available
-      isCorrect: (userAnswers[index] || '').toLowerCase().trim() === (question.correctAnswer || '').toLowerCase().trim(),
-    }));
-
-    // Prepare payload for backend
-    const attemptPayload = {
-      quizId: quiz._id,
-      userId: user?.id || userInfo?.email || 'anonymous',
-      userName: user?.firstName + ' ' + user?.lastName || userInfo?.name || 'Anonymous User',
-      userEmail: user?.primaryEmailAddress?.emailAddress || user?.email || userInfo?.email || '',
-      storeName: userInfo?.storeName || '',
-      score,
-      passed: score >= (quiz.passingScore || 70),
-      startTime: quizStartTime,
-      endTime: new Date().toISOString(),
-      duration: (quiz.timeLimit * 60) - timeLeft,
-      answers,
-    };
-
-    console.log('Saving quiz attempt:', attemptPayload);
+    if (isSubmitted) return;
 
     try {
+      setIsSubmitted(true);
+      
+      // Calculate answers array
+      const answers = quiz.quizQuestions.map((question, index) => {
+        const userAnswer = userAnswers[index] || '';
+        let isCorrect = false;
+        let points = 0;
+
+        // Check if answer is correct
+        if (question.type === 'mcq') {
+          isCorrect = userAnswer === question.correctAnswer;
+        } else if (question.type === 'true_false') {
+          isCorrect = userAnswer === question.correctAnswer;
+        } else if (question.type === 'text' || question.type === 'fill_blank') {
+          isCorrect = userAnswer.toLowerCase().trim() === question.correctAnswer.toLowerCase().trim();
+        }
+
+        points = isCorrect ? question.points : 0;
+
+        return {
+          questionText: question.question,
+          studentAnswer: userAnswer,
+          correctAnswer: question.correctAnswer,
+          isCorrect,
+          points: question.points,
+          timeSpent: 0, // Not tracking individual question time
+        };
+      });
+
+      // Calculate score
+      const totalPoints = answers.reduce((sum, answer) => sum + answer.points, 0);
+      const earnedPoints = answers.reduce((sum, answer) => sum + (answer.isCorrect ? answer.points : 0), 0);
+      const score = Math.round((earnedPoints / totalPoints) * 100);
+      const passed = score >= quiz.passingScore;
+
+      // Prepare attempt data
+      const attemptData = {
+        quizId: quiz._id,
+        userId: user?.id || 'anonymous',
+        userName: userInfo?.name || user?.firstName || 'Anonymous',
+        userEmail: userInfo?.email || user?.emailAddresses?.[0]?.emailAddress || 'anonymous@example.com',
+        storeName: userInfo?.storeName || '',
+        score,
+        passed,
+        startTime: quizStartTime,
+        endTime: new Date().toISOString(),
+        duration: (quiz.timeLimit * 60) - timeLeft,
+        answers,
+      };
+
+      // Submit attempt
       const response = await fetch('/api/quiz-attempts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(attemptPayload),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(attemptData),
       });
-      
+
       if (response.ok) {
-        const result = await response.json();
-        console.log('Quiz attempt saved successfully:', result);
+        // Redirect to test access page without showing results
+        sessionStorage.removeItem('quizUserInfo');
+        router.push('/test-access');
       } else {
-        const errorData = await response.json();
-        console.error('Failed to save quiz attempt:', errorData);
+        console.error('Failed to submit attempt');
       }
-    } catch (e) {
-      console.error('Failed to save quiz attempt:', e);
+    } catch (error) {
+      console.error('Error submitting attempt:', error);
     }
   };
 
@@ -208,65 +186,58 @@ export default function TakeQuizPage() {
   };
 
   const calculateProgress = () => {
-    return ((currentQuestionIndex + 1) / quiz.quizQuestions.length) * 100;
+    if (!quiz) return 0;
+    const answeredCount = Object.keys(userAnswers).length;
+    return (answeredCount / quiz.quizQuestions.length) * 100;
   };
 
-  const calculateScore = () => {
-    let correct = 0;
-    quiz.quizQuestions.forEach((question, index) => {
-      const userAnswer = userAnswers[index];
-      if (!userAnswer) return;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-yellow-500"></div>
+      </div>
+    );
+  }
 
-      switch (question.type) {
-        case 'mcq':
-          if (userAnswer === question.correctAnswer) {
-            correct++;
-          }
-          break;
-        case 'text':
-          if (userAnswer.toLowerCase().trim() === question.correctAnswer.toLowerCase().trim()) {
-            correct++;
-          }
-          break;
-        case 'true_false':
-          if (userAnswer === question.correctAnswer) {
-            correct++;
-          }
-          break;
-        case 'fill_blank':
-          if (userAnswer.toLowerCase().trim() === question.correctAnswer.toLowerCase().trim()) {
-            correct++;
-          }
-          break;
-        default:
-          if (userAnswer === question.correctAnswer) {
-            correct++;
-          }
-      }
-    });
-    return Math.round((correct / quiz.quizQuestions.length) * 100);
-  };
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-white flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => router.push('/test-access')}
+            className="bg-yellow-500 text-black px-6 py-3 rounded-lg font-medium"
+          >
+            Back to Test Access
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-  const renderQuestionContent = () => {
-    const currentQuestion = quiz.quizQuestions[currentQuestionIndex];
-    
-    switch (currentQuestion.type) {
+  if (!quiz) {
+    return null;
+  }
+
+  const renderQuestionContent = (question, questionIndex) => {
+    switch (question.type) {
       case 'mcq':
         return (
           <div className="space-y-4">
-            {currentQuestion.choices.map((choice, index) => (
+            {question.choices.map((choice, index) => (
               <button
                 key={index}
-                onClick={() => handleAnswerSelect(choice.text)}
+                onClick={() => handleAnswerSelect(questionIndex, choice.text)}
                 className={`w-full p-4 text-left rounded-lg border-2 transition-all duration-200 ${
-                  userAnswers[currentQuestionIndex] === choice.text
+                  userAnswers[questionIndex] === choice.text
                     ? 'border-yellow-500 bg-yellow-50'
                     : 'border-gray-200 hover:border-yellow-300'
                 }`}
               >
                 <div className="flex items-center">
                   <div className="w-6 h-6 rounded-full border-2 border-gray-300 mr-4 flex items-center justify-center">
-                    {userAnswers[currentQuestionIndex] === choice.text && (
+                    {userAnswers[questionIndex] === choice.text && (
                       <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
                     )}
                   </div>
@@ -281,11 +252,11 @@ export default function TakeQuizPage() {
         return (
           <div className="space-y-4">
             <textarea
-              value={userAnswers[currentQuestionIndex] || ''}
-              onChange={(e) => handleTextAnswer(e.target.value)}
+              value={userAnswers[questionIndex] || ''}
+              onChange={(e) => handleTextAnswer(questionIndex, e.target.value)}
               placeholder="Type your answer here..."
-              className="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500 resize-none"
-              rows={4}
+              className="w-full p-6 border-2 border-gray-200 rounded-lg focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500 resize-none text-lg"
+              rows={8}
             />
           </div>
         );
@@ -296,16 +267,16 @@ export default function TakeQuizPage() {
             {['True', 'False'].map((option) => (
               <button
                 key={option}
-                onClick={() => handleAnswerSelect(option)}
+                onClick={() => handleAnswerSelect(questionIndex, option)}
                 className={`w-full p-4 text-left rounded-lg border-2 transition-all duration-200 ${
-                  userAnswers[currentQuestionIndex] === option
+                  userAnswers[questionIndex] === option
                     ? 'border-yellow-500 bg-yellow-50'
                     : 'border-gray-200 hover:border-yellow-300'
                 }`}
               >
                 <div className="flex items-center">
                   <div className="w-6 h-6 rounded-full border-2 border-gray-300 mr-4 flex items-center justify-center">
-                    {userAnswers[currentQuestionIndex] === option && (
+                    {userAnswers[questionIndex] === option && (
                       <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
                     )}
                   </div>
@@ -321,10 +292,10 @@ export default function TakeQuizPage() {
           <div className="space-y-4">
             <input
               type="text"
-              value={userAnswers[currentQuestionIndex] || ''}
-              onChange={(e) => handleTextAnswer(e.target.value)}
+              value={userAnswers[questionIndex] || ''}
+              onChange={(e) => handleTextAnswer(questionIndex, e.target.value)}
               placeholder="Fill in the blank..."
-              className="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500"
+              className="w-full p-6 border-2 border-gray-200 rounded-lg focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500 text-lg"
             />
           </div>
         );
@@ -332,19 +303,19 @@ export default function TakeQuizPage() {
       default:
         return (
           <div className="space-y-4">
-            {currentQuestion.choices.map((choice, index) => (
+            {question.choices.map((choice, index) => (
               <button
                 key={index}
-                onClick={() => handleAnswerSelect(choice.text)}
+                onClick={() => handleAnswerSelect(questionIndex, choice.text)}
                 className={`w-full p-4 text-left rounded-lg border-2 transition-all duration-200 ${
-                  userAnswers[currentQuestionIndex] === choice.text
+                  userAnswers[questionIndex] === choice.text
                     ? 'border-yellow-500 bg-yellow-50'
                     : 'border-gray-200 hover:border-yellow-300'
                 }`}
               >
                 <div className="flex items-center">
                   <div className="w-6 h-6 rounded-full border-2 border-gray-300 mr-4 flex items-center justify-center">
-                    {userAnswers[currentQuestionIndex] === choice.text && (
+                    {userAnswers[questionIndex] === choice.text && (
                       <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
                     )}
                   </div>
@@ -357,115 +328,15 @@ export default function TakeQuizPage() {
     }
   };
 
-  if (!isLoaded) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-yellow-500"></div>
-      </div>
-    );
-  }
-
-  // Check if user is authenticated or has user info from session storage
-  if (!user && !userInfo) {
-    return null;
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-yellow-500"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <Image src="/errorIcon.png" alt="" width={180} height={180} />
-          <h2 className="text-xl font-bold mt-4">{error}</h2>
-          <button 
-            onClick={() => router.push('/quizzes')}
-            className="mt-4 bg-yellow-500 text-black px-4 py-2 rounded"
-          >
-            Back to Tests
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (isSubmitted) {
-    const score = calculateScore();
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-white p-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <h1 className="text-3xl font-bold text-center mb-8">Test Results</h1>
-            
-            <div className="text-center mb-8">
-              <div className="text-6xl font-bold text-yellow-500 mb-4">{score}%</div>
-              <div className="text-xl text-gray-600">
-                {score >= 70 ? 'Congratulations! You passed!' : 'Keep practicing!'}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-gray-50 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-gray-900">{quiz.quizQuestions.length}</div>
-                <div className="text-gray-600">Total Questions</div>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-green-600">
-                  {Math.round((score / 100) * quiz.quizQuestions.length)}
-                </div>
-                <div className="text-gray-600">Correct Answers</div>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-blue-600">
-                  {formatTime((quiz.timeLimit * 60) - timeLeft)}
-                </div>
-                <div className="text-gray-600">Time Spent</div>
-              </div>
-            </div>
-
-            <div className="flex justify-center space-x-4">
-              <button
-                onClick={() => {
-                  sessionStorage.removeItem('quizUserInfo');
-                  router.push('/test-access');
-                }}
-                className="bg-yellow-500 hover:bg-yellow-600 text-black px-6 py-3 rounded-lg font-medium"
-              >
-                Take Another Test
-              </button>
-              <button
-                onClick={() => {
-                  sessionStorage.removeItem('quizUserInfo');
-                  router.push('/');
-                }}
-                className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium"
-              >
-                Back to Home
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const currentQuestion = quiz.quizQuestions[currentQuestionIndex];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-white">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
+      <div className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{quiz.quizTitle}</h1>
-              <p className="text-gray-600">Question {currentQuestionIndex + 1} of {quiz.quizQuestions.length}</p>
+              <p className="text-gray-600">All Questions ({quiz.quizQuestions.length} total)</p>
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold text-red-500">{formatTime(timeLeft)}</div>
@@ -484,60 +355,54 @@ export default function TakeQuizPage() {
               style={{ width: `${calculateProgress()}%` }}
             ></div>
           </div>
+          <div className="text-sm text-gray-600 mt-1">
+            {Object.keys(userAnswers).length} of {quiz.quizQuestions.length} questions answered
+          </div>
         </div>
       </div>
 
-      {/* Question */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <div className="mb-8">
-            <div className="flex items-center mb-4">
-              <div className="w-8 h-8 rounded-full bg-yellow-500 text-black flex items-center justify-center font-bold mr-4">
-                {currentQuestionIndex + 1}
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold">{currentQuestion.question}</h2>
-                <div className="text-sm text-gray-500 mt-1">
-                  Type: {currentQuestion.type === 'mcq' ? 'Multiple Choice' : 
-                         currentQuestion.type === 'text' ? 'Text Answer' :
-                         currentQuestion.type === 'true_false' ? 'True/False' :
-                         currentQuestion.type === 'fill_blank' ? 'Fill in the Blank' : 'Question'}
+      {/* All Questions */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="space-y-8">
+          {quiz.quizQuestions.map((question, index) => (
+            <div key={index} className="bg-white rounded-lg shadow-lg p-8">
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 rounded-full bg-yellow-500 text-black flex items-center justify-center font-bold mr-4">
+                      {index + 1}
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-semibold">{question.question}</h2>
+                      <div className="text-sm text-gray-500 mt-1">
+                        Type: {question.type === 'mcq' ? 'Multiple Choice' : 
+                               question.type === 'text' ? 'Text Answer' :
+                               question.type === 'true_false' ? 'True/False' :
+                               question.type === 'fill_blank' ? 'Fill in the Blank' : 'Question'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-yellow-600">{question.points} points</div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Choices */}
-          {renderQuestionContent()}
-
-          {/* Navigation */}
-          <div className="flex justify-between mt-8">
-            <button
-              onClick={handlePrevious}
-              disabled={currentQuestionIndex === 0}
-              className="px-6 py-3 bg-gray-500 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            
-            <div className="flex space-x-4">
-              {currentQuestionIndex < quiz.quizQuestions.length - 1 ? (
-                <button
-                  onClick={handleNext}
-                  className="px-6 py-3 bg-blue-500 text-white rounded-lg"
-                >
-                  Next
-                </button>
-              ) : (
-                <button
-                  onClick={handleSubmit}
-                  className="px-6 py-3 bg-green-500 text-white rounded-lg"
-                >
-                  Submit Test
-                </button>
-              )}
+              {/* Question Content */}
+              {renderQuestionContent(question, index)}
             </div>
-          </div>
+          ))}
+        </div>
+
+        {/* Submit Button */}
+        <div className="mt-8 text-center">
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitted}
+            className="px-8 py-4 bg-green-500 text-white rounded-lg font-medium text-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitted ? 'Submitting...' : 'Submit Test'}
+          </button>
         </div>
       </div>
     </div>

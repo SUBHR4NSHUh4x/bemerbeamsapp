@@ -109,6 +109,11 @@ export default function ManageQuizzesPage() {
             </div>
             
             <div className="flex items-center space-x-4">
+              <Link href="/admin">
+                <button className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium py-2 px-4 rounded-lg transition-colors">
+                  Admin Dashboard
+                </button>
+              </Link>
               <Link href="/analytics">
                 <button className="bg-purple-500 hover:bg-purple-600 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center">
                   <FontAwesomeIcon icon={faChartLine} className="w-4 h-4 mr-2" />

@@ -50,6 +50,11 @@ export default function BulkUploadPage() {
             </div>
             
             <div className="flex items-center space-x-4">
+              <Link href="/admin">
+                <button className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium py-2 px-4 rounded-lg transition-colors">
+                  Admin Dashboard
+                </button>
+              </Link>
               <Link href="/manage-quizzes">
                 <button className="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center">
                   <FontAwesomeIcon icon={faArrowLeft} className="w-4 h-4 mr-2" />

@@ -13,8 +13,6 @@ export default function EnhancedQuizBuilder() {
   const [quizData, setQuizData] = useState({
     quizTitle: '',
     description: '',
-    category: 'General',
-    difficulty: 'medium',
     timeLimit: 30,
     passingScore: 70,
     isPublic: true,
@@ -44,7 +42,6 @@ export default function EnhancedQuizBuilder() {
       correctAnswer: '',
       explanation: '',
       points: 1,
-      timeLimit: 30,
     };
     setQuestions([...questions, newQuestion]);
   };
@@ -100,8 +97,6 @@ export default function EnhancedQuizBuilder() {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('quizTitle', quizData.quizTitle);
-    formData.append('category', quizData.category);
-    formData.append('difficulty', quizData.difficulty);
     formData.append('createdBy', user?.id);
 
     setLoading(true);
@@ -124,8 +119,6 @@ export default function EnhancedQuizBuilder() {
         setQuizData({
           quizTitle: '',
           description: '',
-          category: 'General',
-          difficulty: 'medium',
           timeLimit: 30,
           passingScore: 70,
           isPublic: true,
@@ -194,9 +187,11 @@ export default function EnhancedQuizBuilder() {
 
       if (response.ok) {
         toast.success('Test saved successfully!');
-        // Reset form or redirect
+        // Redirect to manage-quizzes page
+        window.location.href = '/manage-quizzes';
       } else {
-        toast.error('Failed to save test');
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Failed to save test');
       }
     } catch (error) {
       toast.error('Failed to save test');
@@ -321,38 +316,7 @@ export default function EnhancedQuizBuilder() {
             />
           </div>
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Category
-            </label>
-            <select
-              value={quizData.category}
-              onChange={(e) => setQuizData({...quizData, category: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-            >
-              <option value="General">General</option>
-              <option value="Science">Science</option>
-              <option value="History">History</option>
-              <option value="Mathematics">Mathematics</option>
-              <option value="Literature">Literature</option>
-              <option value="Technology">Technology</option>
-            </select>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Difficulty
-            </label>
-            <select
-              value={quizData.difficulty}
-              onChange={(e) => setQuizData({...quizData, difficulty: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-            >
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-            </select>
-          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -545,37 +509,6 @@ export default function EnhancedQuizBuilder() {
                   placeholder="Enter test title"
                   required
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Category
-                </label>
-                <select
-                  value={quizData.category}
-                  onChange={(e) => setQuizData({ ...quizData, category: e.target.value })}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                >
-                  <option value="General">General</option>
-                  <option value="Science">Science</option>
-                  <option value="Math">Math</option>
-                  <option value="History">History</option>
-                  <option value="Literature">Literature</option>
-                  <option value="Technology">Technology</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Difficulty
-                </label>
-                <select
-                  value={quizData.difficulty}
-                  onChange={(e) => setQuizData({ ...quizData, difficulty: e.target.value })}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                >
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -777,34 +710,18 @@ function QuestionEditor({ question, index, onUpdate, onUpdateChoice, onRemove })
 
         {renderQuestionType()}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Points:
-            </label>
-            <input
-              type="number"
-              value={question.points}
-              onChange={(e) => onUpdate('points', parseInt(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-              min="1"
-              max="10"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Time Limit (seconds):
-            </label>
-            <input
-              type="number"
-              value={question.timeLimit}
-              onChange={(e) => onUpdate('timeLimit', parseInt(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-              min="10"
-              max="300"
-            />
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Points:
+          </label>
+          <input
+            type="number"
+            value={question.points}
+            onChange={(e) => onUpdate('points', parseInt(e.target.value))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+            min="1"
+            max="10"
+          />
         </div>
 
         <div>

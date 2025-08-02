@@ -20,6 +20,8 @@ function Page(props) {
   const { selectedIcon } = selectedIconObject;
   const { selectedQuiz } = selectedQuizObject;
   const [focusFirst, setFocusFirst] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [editQuizId, setEditQuizId] = useState(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -27,6 +29,34 @@ function Page(props) {
       router.push('/sign-in');
     }
   }, [isLoaded, user, router]);
+
+  // Check for edit parameter in URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const editParam = urlParams.get('edit');
+    if (editParam) {
+      setEditQuizId(editParam);
+      fetchQuizForEdit(editParam);
+    }
+  }, []);
+
+  const fetchQuizForEdit = async (quizId) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/quizzes/${quizId}`);
+      if (response.ok) {
+        const quizData = await response.json();
+        setQuizQuestions(quizData.quizQuestions || []);
+        setNewQuiz(quizData);
+      } else {
+        console.error('Failed to fetch quiz for editing');
+      }
+    } catch (error) {
+      console.error('Error fetching quiz for edit:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const [quizQuestions, setQuizQuestions] = useState(() => {
     if (selectedQuiz) {
@@ -113,7 +143,7 @@ function Page(props) {
     setQuizQuestions,
   };
 
-  if (!isLoaded) {
+  if (!isLoaded || loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-yellow-500"></div>

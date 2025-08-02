@@ -21,6 +21,13 @@ export default function AdminPage() {
       return;
     }
 
+    // Check if admin is already authenticated in session storage
+    const adminAuthenticated = sessionStorage.getItem('adminAuthenticated');
+    if (adminAuthenticated === 'true') {
+      setIsAuthenticated(true);
+      return;
+    }
+
     if (userProfile && userProfile.role === 'admin') {
       setIsAuthenticated(true);
     } else if (userProfile && userProfile.role !== 'admin') {
@@ -35,6 +42,8 @@ export default function AdminPage() {
     if (adminCredentials.username === 'admin' && adminCredentials.password === 'admin123') {
       setIsAuthenticated(true);
       setShowLoginPrompt(false);
+      // Store admin authentication in session storage
+      sessionStorage.setItem('adminAuthenticated', 'true');
     } else {
       alert('Invalid admin credentials');
     }

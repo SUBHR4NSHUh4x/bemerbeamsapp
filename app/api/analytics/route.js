@@ -47,6 +47,19 @@ export async function GET(request) {
     const averageScore = attempts.length ? (attempts.reduce((sum, a) => sum + a.score, 0) / attempts.length).toFixed(2) : 0;
     const passRate = attempts.length ? (attempts.filter(a => a.passed).length / attempts.length * 100).toFixed(2) : 0;
     const averageTime = attempts.length ? (attempts.reduce((sum, a) => sum + a.duration, 0) / attempts.length / 60).toFixed(2) : 0;
+    
+    // Calculate skipped questions
+    let totalQuestions = 0;
+    let totalSkipped = 0;
+    attempts.forEach(attempt => {
+      if (attempt.answers && Array.isArray(attempt.answers)) {
+        totalQuestions += attempt.answers.length;
+        totalSkipped += attempt.answers.filter(answer => 
+          !answer.studentAnswer || answer.studentAnswer.trim() === ''
+        ).length;
+      }
+    });
+    const skippedRate = totalQuestions > 0 ? ((totalSkipped / totalQuestions) * 100).toFixed(2) : 0;
 
     // Score distribution
     const scoreDistribution = [
@@ -113,6 +126,9 @@ export async function GET(request) {
       averageScore: averageScore,
       passRate: passRate,
       averageTime: averageTime,
+      skippedRate: skippedRate,
+      totalSkipped: totalSkipped,
+      totalQuestions: totalQuestions,
       attemptsChange: 0, // Not implemented
       scoreChange: 0, // Not implemented
       passRateChange: 0, // Not implemented
