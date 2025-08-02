@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -12,32 +12,66 @@ export default function TestResultsPage() {
   const [attempts, setAttempts] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedQuiz, setSelectedQuiz] = useState('all');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedAttempt, setSelectedAttempt] = useState(null);
   const [editedAnswers, setEditedAnswers] = useState([]);
+  const [lastRefresh, setLastRefresh] = useState(null);
 
+  // Auto-refresh every 30 seconds
   useEffect(() => {
     if (isLoaded && !user) {
       router.push('/sign-in');
       return;
     }
+
+    // Initial data fetch
     fetchData();
+
+    // Set up auto-refresh interval
+    const interval = setInterval(() => {
+      if (!loading) {
+        console.log('Auto-refreshing test results...');
+        fetchData(true); // Silent refresh
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
   }, [isLoaded, user, router]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
       
-      // Fetch all quizzes
-      const quizzesResponse = await fetch('/api/quizzes');
+      // Add cache busting parameter
+      const timestamp = Date.now();
+      
+      // Fetch all quizzes with cache busting
+      const quizzesResponse = await fetch(`/api/quizzes?t=${timestamp}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       const quizzesData = await quizzesResponse.json();
       console.log('Quizzes data:', quizzesData);
       setQuizzes(quizzesData.quizzes || []);
 
-      // Fetch all attempts
-      const attemptsResponse = await fetch('/api/quiz-attempts/all');
+      // Fetch all attempts with cache busting
+      const attemptsResponse = await fetch(`/api/quiz-attempts/all?t=${timestamp}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       const attemptsData = await attemptsResponse.json();
       console.log('Attempts data:', attemptsData);
       console.log('Number of attempts found:', attemptsData.attempts?.length || 0);
@@ -50,12 +84,26 @@ export default function TestResultsPage() {
       console.log('Attempts without quizId:', allAttempts.filter(a => !a.quizId).length);
       
       setAttempts(allAttempts);
+      setLastRefresh(new Date());
+      
+      if (!silent) {
+        toast.success(`Loaded ${allAttempts.length} test results`);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
-      toast.error('Failed to load test results');
+      if (!silent) {
+        toast.error('Failed to load test results');
+      }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  }, []);
+
+  // Manual refresh function
+  const handleManualRefresh = async () => {
+    console.log('Manual refresh triggered');
+    await fetchData();
   };
 
   const handleEditAttempt = (attempt) => {
@@ -117,7 +165,7 @@ export default function TestResultsPage() {
         
         // Also refresh data from server to ensure consistency
         setTimeout(() => {
-          fetchData();
+          fetchData(true);
         }, 500);
       } else {
         const errorData = await response.json();
@@ -216,6 +264,27 @@ export default function TestResultsPage() {
             </div>
             
             <div className="flex items-center space-x-4">
+              {/* Refresh Status */}
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                {lastRefresh && (
+                  <span>Last updated: {lastRefresh.toLocaleTimeString()}</span>
+                )}
+                {refreshing && (
+                  <div className="flex items-center space-x-1">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-500"></div>
+                    <span>Refreshing...</span>
+                  </div>
+                )}
+              </div>
+              
+              <button
+                onClick={handleManualRefresh}
+                disabled={refreshing}
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {refreshing ? 'Refreshing...' : '🔄 Refresh'}
+              </button>
+              
               <button
                 onClick={exportCSV}
                 className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
@@ -243,20 +312,27 @@ export default function TestResultsPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Filters */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <div className="flex items-center space-x-4">
-            <label className="text-sm font-medium text-gray-700">Filter by Quiz:</label>
-            <select
-              value={selectedQuiz}
-              onChange={(e) => setSelectedQuiz(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
-            >
-              <option value="all">All Quizzes</option>
-              {quizzes.map(quiz => (
-                <option key={quiz._id} value={quiz._id}>
-                  {quiz.quizTitle}
-                </option>
-              ))}
-            </select>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <label className="text-sm font-medium text-gray-700">Filter by Quiz:</label>
+              <select
+                value={selectedQuiz}
+                onChange={(e) => setSelectedQuiz(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+              >
+                <option value="all">All Quizzes</option>
+                {quizzes.map(quiz => (
+                  <option key={quiz._id} value={quiz._id}>
+                    {quiz.quizTitle}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Results Summary */}
+            <div className="text-sm text-gray-600">
+              Showing {filteredAttempts.length} of {attempts.length} total results
+            </div>
           </div>
         </div>
 
