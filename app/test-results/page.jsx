@@ -14,6 +14,7 @@ export default function TestResultsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedQuiz, setSelectedQuiz] = useState('all');
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedAttempt, setSelectedAttempt] = useState(null);
   const [editedAnswers, setEditedAnswers] = useState([]);
 
@@ -50,6 +51,11 @@ export default function TestResultsPage() {
     setSelectedAttempt(attempt);
     setEditedAnswers([...attempt.answers]);
     setShowEditModal(true);
+  };
+
+  const handleViewDetails = (attempt) => {
+    setSelectedAttempt(attempt);
+    setShowDetailsModal(true);
   };
 
   const handleAnswerToggle = (answerIndex, isCorrect) => {
@@ -319,12 +325,20 @@ export default function TestResultsPage() {
                           {new Date(attempt.endTime).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
-                            onClick={() => handleEditAttempt(attempt)}
-                            className="text-yellow-600 hover:text-yellow-900 bg-yellow-100 hover:bg-yellow-200 px-3 py-1 rounded-lg transition-colors"
-                          >
-                            View & Edit
-                          </button>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleViewDetails(attempt)}
+                              className="text-blue-600 hover:text-blue-900 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded-lg transition-colors"
+                            >
+                              View Responses
+                            </button>
+                            <button
+                              onClick={() => handleEditAttempt(attempt)}
+                              className="text-yellow-600 hover:text-yellow-900 bg-yellow-100 hover:bg-yellow-200 px-3 py-1 rounded-lg transition-colors"
+                            >
+                              Edit
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -335,6 +349,129 @@ export default function TestResultsPage() {
           </div>
         </div>
       </main>
+
+      {/* Details Modal - Shows all responses */}
+      {showDetailsModal && selectedAttempt && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Quiz Responses - {selectedAttempt.userName}
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {selectedAttempt.quiz?.quizTitle} • {new Date(selectedAttempt.endTime).toLocaleDateString()}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowDetailsModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              {/* Summary Information */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700">Score:</span>
+                    <span className="ml-2 font-bold text-lg">{selectedAttempt.score}%</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Status:</span>
+                    <span className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold ${
+                      selectedAttempt.passed 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {selectedAttempt.passed ? 'Passed' : 'Failed'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Duration:</span>
+                    <span className="ml-2">{Math.round(selectedAttempt.duration / 60)} minutes</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Store:</span>
+                    <span className="ml-2">{selectedAttempt.storeName || 'N/A'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detailed Responses Table */}
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">#</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">Question</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">Student Answer</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">Correct Answer</th>
+                      <th className="px-4 py-2 text-center font-medium text-gray-700">Points</th>
+                      <th className="px-4 py-2 text-center font-medium text-gray-700">Time Spent</th>
+                      <th className="px-4 py-2 text-center font-medium text-gray-700">Result</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {selectedAttempt.answers?.map((answer, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 font-medium text-gray-900">
+                          {index + 1}
+                        </td>
+                        <td className="px-4 py-3 text-gray-900 max-w-xs">
+                          <div className="break-words">{answer.questionText}</div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-900">
+                          <div className="break-words bg-gray-50 p-2 rounded">
+                            {answer.studentAnswer || 'No answer provided'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-900">
+                          <div className="break-words bg-green-50 p-2 rounded">
+                            {answer.correctAnswer}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-center font-medium text-gray-900">
+                          {answer.points}
+                        </td>
+                        <td className="px-4 py-3 text-center text-gray-600">
+                          {answer.timeSpent || 0}s
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {answer.isCorrect ? (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                              ✓ Correct
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                              ✗ Incorrect
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowDetailsModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Modal */}
       {showEditModal && selectedAttempt && (

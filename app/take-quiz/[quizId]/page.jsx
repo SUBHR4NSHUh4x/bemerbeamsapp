@@ -14,6 +14,7 @@ export default function TakeQuizPage() {
   const [userAnswers, setUserAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [quizStartTime, setQuizStartTime] = useState(null);
@@ -172,9 +173,8 @@ export default function TakeQuizPage() {
 
       if (response.ok) {
         console.log('Attempt submitted successfully');
-        // Redirect to test access page without showing results
-        sessionStorage.removeItem('quizUserInfo');
-        router.push('/test-access');
+        // Show confirmation screen instead of immediately redirecting
+        setShowConfirmation(true);
       } else {
         const errorData = await response.json();
         console.error('Failed to submit attempt:', errorData);
@@ -188,6 +188,11 @@ export default function TakeQuizPage() {
     }
   };
 
+  const handleReturnToTestAccess = () => {
+    sessionStorage.removeItem('quizUserInfo');
+    router.push('/test-access');
+  };
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -199,6 +204,45 @@ export default function TakeQuizPage() {
     const answeredCount = Object.keys(userAnswers).length;
     return (answeredCount / quiz.quizQuestions.length) * 100;
   };
+
+  // Show confirmation screen
+  if (showConfirmation) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-white flex items-center justify-center">
+        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-8 text-center">
+          <div className="mb-6">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Your Answer is Submitted!
+            </h1>
+            <p className="text-gray-600 mb-6">
+              Thank you for completing the test. Your responses have been successfully recorded.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <button
+              onClick={handleReturnToTestAccess}
+              className="w-full bg-yellow-500 text-black font-semibold py-3 px-6 rounded-lg hover:bg-yellow-600 transition-colors"
+            >
+              Return to Test Access
+            </button>
+            
+            <button
+              onClick={() => router.push('/')}
+              className="w-full bg-gray-500 text-white font-semibold py-3 px-6 rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Go to Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
