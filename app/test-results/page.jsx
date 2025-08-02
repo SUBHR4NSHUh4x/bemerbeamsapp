@@ -87,11 +87,13 @@ export default function TestResultsPage() {
       setAttempts(sortedAttempts);
       setLastRefresh(new Date());
       
+      // Only show success toast on manual refresh, not auto-refresh
       if (!silent) {
         toast.success(`Loaded ${sortedAttempts.length} test results`);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
+      // Only show error toast on manual refresh or initial load, not auto-refresh
       if (!silent) {
         toast.error(`Failed to load test results: ${error.message}`);
       }
@@ -101,7 +103,7 @@ export default function TestResultsPage() {
     }
   }, []);
 
-  // Auto-refresh every 15 seconds for faster updates
+  // Auto-refresh every 30 seconds (increased from 15 seconds)
   useEffect(() => {
     if (isLoaded && !user) {
       router.push('/sign-in');
@@ -111,13 +113,13 @@ export default function TestResultsPage() {
     // Initial data fetch
     fetchData();
 
-    // Set up auto-refresh interval
+    // Set up auto-refresh interval - increased to 30 seconds and made silent
     const interval = setInterval(() => {
       if (!loading) {
         console.log('Auto-refreshing test results...');
-        fetchData(true); // Silent refresh
+        fetchData(true); // Silent refresh - no toast notifications
       }
-    }, 15000); // 15 seconds for faster updates
+    }, 30000); // Changed from 15 seconds to 30 seconds
 
     return () => clearInterval(interval);
   }, [isLoaded, user, router, fetchData, loading]);
@@ -125,7 +127,7 @@ export default function TestResultsPage() {
   // Manual refresh function
   const handleManualRefresh = async () => {
     console.log('Manual refresh triggered');
-    await fetchData();
+    await fetchData(); // This will show toast notifications
   };
 
   // Group attempts by quiz
@@ -252,7 +254,7 @@ export default function TestResultsPage() {
           updatedAt: new Date().toISOString()
         } : null);
         
-        // Force a refresh to get the latest data
+        // Force a silent refresh to get the latest data
         await fetchData(true);
       } else {
         const errorData = await response.json();
@@ -271,7 +273,10 @@ export default function TestResultsPage() {
       ? attemptsByQuiz[selectedQuizForDetails.quizId]?.attempts || []
       : attempts;
 
-    if (!currentAttempts.length) return;
+    if (!currentAttempts.length) {
+      toast.error('No data to export');
+      return;
+    }
     
     const header = [
       'Employee Name',
@@ -310,6 +315,9 @@ export default function TestResultsPage() {
     a.download = `test-results-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+    
+    // Show success message for export
+    toast.success('CSV exported successfully');
   };
 
   const handleDeleteQuiz = async (quizId, quizTitle) => {
@@ -332,8 +340,8 @@ export default function TestResultsPage() {
       if (quizResponse.ok) {
         toast.success(`Quiz "${quizTitle}" deleted successfully`);
         
-        // Refresh data to update the UI
-        await fetchData();
+        // Refresh data to update the UI (silent refresh)
+        await fetchData(true);
       } else {
         const errorData = await quizResponse.json();
         toast.error(errorData.error || 'Failed to delete quiz');
@@ -357,7 +365,17 @@ export default function TestResultsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-white">
-      <Toaster position="top-center" />
+      {/* Reduced toast notifications - only show for user actions */}
+      <Toaster 
+        position="top-center" 
+        toastOptions={{
+          duration: 3000, // Reduced from default 4000ms
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+        }}
+      />
       
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
@@ -382,7 +400,7 @@ export default function TestResultsPage() {
             </div>
             
             <div className="flex items-center space-x-4">
-              {/* Refresh Status */}
+              {/* Refresh Status - More subtle */}
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 {lastRefresh && (
                   <span>Last updated: {lastRefresh.toLocaleTimeString()}</span>
@@ -390,12 +408,13 @@ export default function TestResultsPage() {
                 {refreshing && (
                   <div className="flex items-center space-x-1">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-500"></div>
-                    <span>Refreshing...</span>
+                    <span>Syncing...</span>
                   </div>
                 )}
                 {!refreshing && lastRefresh && (
                   <div className="flex items-center space-x-1 text-green-600">
-                    <span>✓ Live</span>
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span>Live</span>
                   </div>
                 )}
               </div>
@@ -454,11 +473,11 @@ export default function TestResultsPage() {
             {/* Quiz Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {Object.values(attemptsByQuiz).map((quiz) => {
-                // Check if there are recent attempts (within last 5 minutes)
+                // Check if there are recent attempts (within last 10 minutes instead of 5)
                 const recentAttempts = quiz.attempts.filter(attempt => {
                   const attemptTime = new Date(attempt.endTime || attempt.createdAt);
-                  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-                  return attemptTime > fiveMinutesAgo;
+                  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+                  return attemptTime > tenMinutesAgo;
                 });
                 
                 const hasRecentAttempts = recentAttempts.length > 0;
@@ -467,7 +486,7 @@ export default function TestResultsPage() {
                 return (
                   <div key={quiz.quizId} className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow relative">
                     {hasRecentAttempts && (
-                      <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
+                      <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
                         NEW
                       </div>
                     )}
