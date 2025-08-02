@@ -128,6 +128,7 @@ export default function TakeQuizPage() {
         points = isCorrect ? question.points : 0;
 
         return {
+          questionId: question._id || question.id || `question_${index}`, // Add questionId
           questionText: question.question,
           studentAnswer: userAnswer,
           correctAnswer: question.correctAnswer,

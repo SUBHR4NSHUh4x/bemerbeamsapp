@@ -34,12 +34,12 @@ export default function EnhancedQuizBuilder() {
       type,
       question: '',
       choices: type === 'mcq' ? [
-        { text: '', isCorrect: false },
+        { text: '', isCorrect: true }, // Set first choice as correct by default
         { text: '', isCorrect: false },
         { text: '', isCorrect: false },
         { text: '', isCorrect: false },
       ] : [],
-      correctAnswer: '',
+      correctAnswer: type === 'mcq' ? '' : '', // Will be set when first choice is filled
       explanation: '',
       points: 1,
     };
@@ -58,6 +58,16 @@ export default function EnhancedQuizBuilder() {
       ...updatedQuestions[questionIndex].choices[choiceIndex],
       [field]: value,
     };
+    
+    // If this is an MCQ question and we're updating the text of the correct choice,
+    // also update the correctAnswer field
+    if (field === 'text' && updatedQuestions[questionIndex].type === 'mcq') {
+      const correctChoice = updatedQuestions[questionIndex].choices.find(choice => choice.isCorrect);
+      if (correctChoice && correctChoice.text) {
+        updatedQuestions[questionIndex].correctAnswer = correctChoice.text;
+      }
+    }
+    
     setQuestions(updatedQuestions);
   };
 
@@ -167,13 +177,39 @@ export default function EnhancedQuizBuilder() {
         toast.error(`Question ${i + 1} text is required`);
         return;
       }
-      if (!question.correctAnswer.trim()) {
-        toast.error(`Question ${i + 1} correct answer is required`);
-        return;
-      }
-      if (question.type === 'mcq' && (!question.choices || question.choices.length < 2)) {
-        toast.error(`Question ${i + 1} must have at least 2 choices`);
-        return;
+      
+      if (question.type === 'mcq') {
+        // For MCQ, validate choices and correct answer
+        if (!question.choices || question.choices.length < 2) {
+          toast.error(`Question ${i + 1} must have at least 2 choices`);
+          return;
+        }
+        
+        // Check if all choices have text
+        for (let j = 0; j < question.choices.length; j++) {
+          if (!question.choices[j].text.trim()) {
+            toast.error(`Question ${i + 1} choice ${j + 1} cannot be empty`);
+            return;
+          }
+        }
+        
+        // Check if a correct answer is selected
+        const correctChoice = question.choices.find(choice => choice.isCorrect);
+        if (!correctChoice) {
+          toast.error(`Question ${i + 1} must have a correct answer selected`);
+          return;
+        }
+        
+        // Ensure correctAnswer field matches the selected choice
+        if (!question.correctAnswer || question.correctAnswer !== correctChoice.text) {
+          question.correctAnswer = correctChoice.text;
+        }
+      } else {
+        // For other question types, validate correctAnswer field
+        if (!question.correctAnswer.trim()) {
+          toast.error(`Question ${i + 1} correct answer is required`);
+          return;
+        }
       }
     }
 
@@ -638,13 +674,22 @@ function QuestionEditor({ question, index, onUpdate, onUpdateChoice, onRemove })
                     question.choices.forEach((_, i) => {
                       onUpdateChoice(i, 'isCorrect', i === choiceIndex);
                     });
+                    // Set the correct answer to the selected choice text
+                    onUpdate('correctAnswer', choice.text);
                   }}
                   className="h-4 w-4 text-yellow-500 focus:ring-yellow-500 border-gray-300"
                 />
                 <input
                   type="text"
                   value={choice.text}
-                  onChange={(e) => onUpdateChoice(choiceIndex, 'text', e.target.value)}
+                  onChange={(e) => {
+                    const newText = e.target.value;
+                    onUpdateChoice(choiceIndex, 'text', newText);
+                    // If this choice is currently marked as correct, update the correctAnswer
+                    if (choice.isCorrect) {
+                      onUpdate('correctAnswer', newText);
+                    }
+                  }}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                   placeholder={`Choice ${choiceIndex + 1}`}
                 />

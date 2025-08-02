@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 
 const answerSchema = new Schema({
-  questionId: { type: Schema.Types.ObjectId, required: true },
+  questionId: { type: Schema.Types.ObjectId, required: false }, // Made optional
   questionText: { type: String, required: true },
   studentAnswer: { type: String, required: true },
   correctAnswer: { type: String, required: true },

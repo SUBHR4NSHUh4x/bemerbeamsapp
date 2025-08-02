@@ -31,6 +31,19 @@ export async function POST(request) {
     const data = await request.json();
     console.log('Received attempt data:', data);
     
+    // Validate required fields
+    if (!data.quizId) {
+      return NextResponse.json({ error: 'quizId is required' }, { status: 400 });
+    }
+    
+    if (!data.userName) {
+      return NextResponse.json({ error: 'userName is required' }, { status: 400 });
+    }
+    
+    if (!data.answers || !Array.isArray(data.answers)) {
+      return NextResponse.json({ error: 'answers array is required' }, { status: 400 });
+    }
+    
     data.quizId = new mongoose.Types.ObjectId(data.quizId);
     const attempt = await QuizAttempt.create(data);
     console.log('Attempt saved successfully:', attempt._id);
@@ -38,6 +51,24 @@ export async function POST(request) {
     return NextResponse.json({ success: true, attempt });
   } catch (error) {
     console.error('QuizAttempts API POST error:', error);
-    return NextResponse.json({ error: 'Failed to save quiz attempt' }, { status: 500 });
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return NextResponse.json({ 
+        error: `Validation error: ${validationErrors.join(', ')}` 
+      }, { status: 400 });
+    }
+    
+    // Handle ObjectId errors
+    if (error.name === 'CastError' && error.kind === 'ObjectId') {
+      return NextResponse.json({ 
+        error: 'Invalid quiz ID format' 
+      }, { status: 400 });
+    }
+    
+    return NextResponse.json({ 
+      error: 'Failed to save quiz attempt: ' + error.message 
+    }, { status: 500 });
   }
 }
