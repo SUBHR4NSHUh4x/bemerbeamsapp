@@ -18,6 +18,7 @@ export default function TestResultsPage() {
   const [selectedAttempt, setSelectedAttempt] = useState(null);
   const [editedAnswers, setEditedAnswers] = useState([]);
   const [lastRefresh, setLastRefresh] = useState(null);
+  const [savingChanges, setSavingChanges] = useState(false);
 
   const fetchData = useCallback(async (silent = false) => {
     try {
@@ -168,11 +169,16 @@ export default function TestResultsPage() {
     );
   };
 
+  // Enhanced save function with better error handling and user feedback
   const handleSaveChanges = async () => {
+    if (!selectedAttempt) return;
+    
+    setSavingChanges(true);
+    
     try {
       const totalPoints = editedAnswers.reduce((sum, answer) => sum + answer.points, 0);
       const earnedPoints = editedAnswers.reduce((sum, answer) => sum + (answer.isCorrect ? answer.points : 0), 0);
-      const newScore = Math.round((earnedPoints / totalPoints) * 100);
+      const newScore = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
       const passed = newScore >= (selectedAttempt.quizId?.passingScore || 70);
 
       const updatedAttempt = {
@@ -180,6 +186,8 @@ export default function TestResultsPage() {
         answers: editedAnswers,
         score: newScore,
         passed,
+        lastModified: new Date().toISOString(),
+        modifiedBy: user?.id || 'admin'
       };
 
       const response = await fetch(`/api/quiz-attempts/${selectedAttempt._id}`, {
@@ -191,9 +199,10 @@ export default function TestResultsPage() {
       });
 
       if (response.ok) {
-        toast.success('Results updated successfully');
+        toast.success('Results updated successfully! 🎉');
         setShowEditModal(false);
         
+        // Update local state immediately for better UX
         setAttempts(prevAttempts => 
           prevAttempts.map(attempt => 
             attempt._id === selectedAttempt._id 
@@ -202,29 +211,24 @@ export default function TestResultsPage() {
                   answers: editedAnswers, 
                   score: newScore, 
                   passed,
-                  updatedAt: new Date().toISOString()
+                  lastModified: new Date().toISOString(),
+                  modifiedBy: user?.id || 'admin'
                 }
               : attempt
           )
         );
         
-        setSelectedAttempt(prev => prev ? {
-          ...prev,
-          answers: editedAnswers,
-          score: newScore,
-          passed,
-          updatedAt: new Date().toISOString()
-        } : null);
-        
-        // Refresh data silently after update
-        await fetchData(true);
+        // Refresh data silently after update to ensure consistency
+        setTimeout(() => fetchData(true), 1000);
       } else {
         const errorData = await response.json();
         toast.error(errorData.error || 'Failed to update results');
       }
     } catch (error) {
       console.error('Error updating attempt:', error);
-      toast.error('Failed to update results');
+      toast.error('Failed to update results. Please try again.');
+    } finally {
+      setSavingChanges(false);
     }
   };
 
@@ -241,9 +245,11 @@ export default function TestResultsPage() {
       'Marks Secured',
       'Total Marks',
       'Percentage',
-      'Passed',
-      'Date',
-      'Duration (minutes)'
+      'Status',
+      'Date Completed',
+      'Duration (minutes)',
+      'Last Modified',
+      'Modified By'
     ];
     
     const rows = attempts.map(attempt => {
@@ -251,28 +257,47 @@ export default function TestResultsPage() {
       const securedMarks = attempt.answers.reduce((sum, answer) => sum + (answer.isCorrect ? answer.points : 0), 0);
       
       return [
-        attempt.userName,
+        attempt.userName || 'N/A',
         attempt.storeName || 'N/A',
         attempt.quizId?.quizTitle || 'N/A',
         securedMarks,
         totalMarks,
         `${attempt.score}%`,
-        attempt.passed ? 'Yes' : 'No',
-        new Date(attempt.endTime).toLocaleDateString(),
-        Math.round(attempt.duration / 60)
+        attempt.passed ? 'Passed' : 'Failed',
+        new Date(attempt.endTime || attempt.createdAt).toLocaleDateString(),
+        Math.round((attempt.duration || 0) / 60),
+        attempt.lastModified ? new Date(attempt.lastModified).toLocaleDateString() : 'N/A',
+        attempt.modifiedBy || 'System'
       ];
     });
     
-    let csv = [header, ...rows].map(r => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const csvContent = [header, ...rows]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `test-results-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    toast.success('CSV exported successfully');
+    toast.success('CSV exported successfully! 📊');
+  };
+
+  // Calculate live preview scores in modal
+  const calculateLivePreview = () => {
+    if (!editedAnswers.length) return { score: 0, passed: false };
+    
+    const totalPoints = editedAnswers.reduce((sum, answer) => sum + answer.points, 0);
+    const earnedPoints = editedAnswers.reduce((sum, answer) => sum + (answer.isCorrect ? answer.points : 0), 0);
+    const score = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
+    const passed = score >= (selectedAttempt?.quizId?.passingScore || 70);
+    
+    return { score, passed, earnedPoints, totalPoints };
   };
 
   if (!isLoaded || !user) {
@@ -341,16 +366,19 @@ export default function TestResultsPage() {
               
               <button
                 onClick={exportCSV}
-                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
+                disabled={!attempts.length}
+                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Export CSV
+                📊 Export CSV
               </button>
+              
               <button
                 onClick={() => router.push('/admin')}
                 className="bg-yellow-500 text-black px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors"
               >
                 Admin Dashboard
               </button>
+              
               <button
                 onClick={() => router.push('/admin')}
                 className="text-gray-500 hover:text-gray-700"
@@ -372,7 +400,7 @@ export default function TestResultsPage() {
               onChange={(e) => setSelectedQuiz(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
             >
-              <option value="all">All Quizzes</option>
+              <option value="all">All Quizzes ({attempts.length} results)</option>
               {Object.values(attemptsByQuiz).map((quiz) => (
                 <option key={quiz.quizId} value={quiz.quizId}>
                   {quiz.quizTitle} ({quiz.totalAttempts} attempts)
@@ -384,7 +412,7 @@ export default function TestResultsPage() {
 
         {/* Summary Stats */}
         <div className="mb-6 bg-white rounded-lg shadow-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Overall Statistics</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">📊 Overall Statistics</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">{Object.keys(attemptsByQuiz).length}</div>
@@ -440,7 +468,7 @@ export default function TestResultsPage() {
                     Date
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    View & Edit
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -448,13 +476,25 @@ export default function TestResultsPage() {
                 {loading ? (
                   <tr>
                     <td colSpan="9" className="px-6 py-4 text-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mx-auto"></div>
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div>
+                        <span className="text-gray-500">Loading test results...</span>
+                      </div>
                     </td>
                   </tr>
                 ) : attempts.length === 0 ? (
                   <tr>
                     <td colSpan="9" className="px-6 py-4 text-center text-gray-500">
-                      No test results found
+                      <div className="flex flex-col items-center space-y-2">
+                        <span className="text-2xl">📝</span>
+                        <span>No test results found</span>
+                        <button 
+                          onClick={handleManualRefresh}
+                          className="text-blue-500 hover:text-blue-700 underline"
+                        >
+                          Refresh to check for new results
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -468,6 +508,7 @@ export default function TestResultsPage() {
                       const attemptTime = new Date(attempt.endTime || attempt.createdAt);
                       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
                       const isRecent = attemptTime > fiveMinutesAgo;
+                      const isModified = attempt.lastModified;
                       
                       return (
                         <tr key={attempt._id} className={`hover:bg-gray-50 ${isRecent ? 'bg-yellow-50' : ''}`}>
@@ -479,10 +520,15 @@ export default function TestResultsPage() {
                                   NEW
                                 </span>
                               )}
+                              {isModified && (
+                                <span className="ml-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+                                  EDITED
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {attempt.userName}
+                            {attempt.userName || 'N/A'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {attempt.storeName || 'N/A'}
@@ -502,18 +548,26 @@ export default function TestResultsPage() {
                                 ? 'bg-green-100 text-green-800' 
                                 : 'bg-red-100 text-red-800'
                             }`}>
-                              {attempt.passed ? 'Passed' : 'Failed'}
+                              {attempt.passed ? '✅ Passed' : '❌ Failed'}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(attempt.endTime || attempt.createdAt).toLocaleString()}
+                            <div>
+                              {new Date(attempt.endTime || attempt.createdAt).toLocaleString()}
+                              {isModified && (
+                                <div className="text-xs text-blue-600">
+                                  Modified: {new Date(attempt.lastModified).toLocaleString()}
+                                </div>
+                              )}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button
                               onClick={() => handleEditAttempt(attempt)}
-                              className="text-blue-600 hover:text-blue-900 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded-lg transition-colors text-xs"
+                              className="inline-flex items-center space-x-1 text-blue-600 hover:text-blue-900 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded-lg transition-colors text-xs font-medium"
                             >
-                              View & Edit
+                              <span>👁️</span>
+                              <span>View & Edit</span>
                             </button>
                           </td>
                         </tr>
@@ -526,15 +580,15 @@ export default function TestResultsPage() {
         </div>
       </main>
 
-      {/* Edit Modal with Manual Correction */}
+      {/* Enhanced Edit Modal with Live Preview */}
       {showEditModal && selectedAttempt && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">
-                    Manual Correction - {selectedAttempt.userName}
+                    ✏️ Manual Correction - {selectedAttempt.userName}
                   </h3>
                   <p className="text-sm text-gray-500 mt-1">
                     {selectedAttempt.quizId?.quizTitle || 'Unknown Quiz'} • {new Date(selectedAttempt.endTime).toLocaleDateString()}
@@ -552,96 +606,146 @@ export default function TestResultsPage() {
             </div>
             
             <div className="p-6">
-              {/* Summary Information */}
-              <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium text-gray-700">Current Score:</span>
-                    <span className="ml-2 font-bold text-lg">{selectedAttempt.score}%</span>
+              {/* Live Preview Summary */}
+              {(() => {
+                const livePreview = calculateLivePreview();
+                return (
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 mb-6 border border-blue-200">
+                    <h4 className="font-semibold text-gray-900 mb-3">📊 Live Preview</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-700">Original Score:</span>
+                        <span className="ml-2 font-bold text-lg text-gray-600">{selectedAttempt.score}%</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">New Score:</span>
+                        <span className={`ml-2 font-bold text-lg ${
+                          livePreview.score > selectedAttempt.score ? 'text-green-600' : 
+                          livePreview.score < selectedAttempt.score ? 'text-red-600' : 'text-blue-600'
+                        }`}>
+                          {livePreview.score}%
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">New Status:</span>
+                        <span className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold ${
+                          livePreview.passed 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {livePreview.passed ? '✅ Passed' : '❌ Failed'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Points:</span>
+                        <span className="ml-2">{livePreview.earnedPoints}/{livePreview.totalPoints}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Store:</span>
+                        <span className="ml-2">{selectedAttempt.storeName || 'N/A'}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Status:</span>
-                    <span className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold ${
-                      selectedAttempt.passed 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {selectedAttempt.passed ? 'Passed' : 'Failed'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Duration:</span>
-                    <span className="ml-2">{Math.round(selectedAttempt.duration / 60)} minutes</span>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Store:</span>
-                    <span className="ml-2">{selectedAttempt.storeName || 'N/A'}</span>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* Questions and Answers with Manual Correction */}
               <div className="space-y-4">
                 {editedAnswers.map((answer, index) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-4">
+                  <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-start mb-3">
                       <h4 className="font-medium text-gray-900">
-                        Question {index + 1}
+                        Question {index + 1} of {editedAnswers.length}
                       </h4>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-3">
                         <span className="text-sm text-gray-500">
                           Points: {answer.points}
                         </span>
                         <button
                           onClick={() => handleAnswerToggle(index, !answer.isCorrect)}
-                          className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105 ${
                             answer.isCorrect
-                              ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                              : 'bg-red-100 text-red-800 hover:bg-red-200'
+                              ? 'bg-green-500 text-white hover:bg-green-600 shadow-green-200 shadow-lg'
+                              : 'bg-red-500 text-white hover:bg-red-600 shadow-red-200 shadow-lg'
                           }`}
                         >
-                          {answer.isCorrect ? 'Correct' : 'Incorrect'}
+                          {answer.isCorrect ? '✅ Correct' : '❌ Incorrect'}
                         </button>
                       </div>
                     </div>
                     
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <div>
                         <span className="text-sm font-medium text-gray-700">Question:</span>
-                        <p className="text-sm text-gray-900 mt-1">{answer.questionText}</p>
+                        <p className="text-sm text-gray-900 mt-1 p-3 bg-gray-50 rounded border-l-4 border-gray-300">
+                          {answer.questionText}
+                        </p>
                       </div>
                       
                       <div>
-                        <span className="text-sm font-medium text-gray-700">Student Answer:</span>
-                        <p className="text-sm text-gray-900 mt-1 bg-gray-50 p-2 rounded">
+                        <span className="text-sm font-medium text-gray-700">Student&apos;s Answer:</span>
+                        <p className="text-sm text-gray-900 mt-1 p-3 bg-blue-50 rounded border-l-4 border-blue-300">
                           {answer.studentAnswer || 'No answer provided'}
                         </p>
                       </div>
                       
                       <div>
                         <span className="text-sm font-medium text-gray-700">Correct Answer:</span>
-                        <p className="text-sm text-gray-900 mt-1 bg-green-50 p-2 rounded">
+                        <p className="text-sm text-gray-900 mt-1 p-3 bg-green-50 rounded border-l-4 border-green-300">
                           {answer.correctAnswer}
                         </p>
+                      </div>
+                      
+                      {/* Answer comparison indicator */}
+                      <div className="flex items-center space-x-2 text-xs">
+                        <span className="text-gray-500">Similarity:</span>
+                        <div className={`px-2 py-1 rounded-full ${
+                          answer.studentAnswer && answer.correctAnswer && 
+                          answer.studentAnswer.toLowerCase().includes(answer.correctAnswer.toLowerCase())
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {answer.studentAnswer && answer.correctAnswer && 
+                           answer.studentAnswer.toLowerCase().includes(answer.correctAnswer.toLowerCase())
+                            ? 'Partial Match Detected' 
+                            : 'Manual Review Required'}
+                        </div>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
               
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowEditModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveChanges}
-                  className="px-4 py-2 bg-yellow-500 text-black rounded-lg hover:bg-yellow-600 transition-colors"
-                >
-                  Save Changes
-                </button>
+              {/* Action Buttons */}
+              <div className="mt-8 flex justify-between items-center pt-6 border-t border-gray-200">
+                <div className="text-sm text-gray-500">
+                  💡 Tip: Click the Correct/Incorrect buttons to override automatic grading for acceptable answers that don&apos;t exactly match.
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => setShowEditModal(false)}
+                    className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveChanges}
+                    disabled={savingChanges}
+                    className="px-6 py-2 bg-yellow-500 text-black rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
+                    {savingChanges ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black"></div>
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>💾</span>
+                        <span>Save Changes</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
