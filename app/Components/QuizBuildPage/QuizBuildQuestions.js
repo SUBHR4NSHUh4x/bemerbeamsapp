@@ -72,6 +72,7 @@ function QuizBuildQuestions({ focusProp, quizQuestions, setQuizQuestions }) {
       question: '',
       choices: prefixes.slice(0, 2).map((prefix) => ({ text: prefix + '. ', isCorrect: false })),
       correctAnswer: '',
+      points: 1, // Default points
       answeredResult: -1,
       statistics: {
         totalAttempts: 0,
@@ -155,11 +156,18 @@ function QuizBuildQuestions({ focusProp, quizQuestions, setQuizQuestions }) {
     setQuizQuestions(questionsCopy);
   }
 
+  function updatePoints(points, questionIndex) {
+    const questionsCopy = [...quizQuestions];
+    questionsCopy[questionIndex].points = points;
+    setQuizQuestions(questionsCopy);
+  }
+
   function renderQuestionComponent(question, index) {
     const commonProps = {
       question,
       onQuestionChange: (text) => handleInputChange(index, text),
       onCorrectAnswerChange: (text) => updateCorrectAnswer(text, index),
+      onPointsChange: (points) => updatePoints(points, index),
       questionNumber: index + 1,
     };
 

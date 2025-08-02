@@ -88,9 +88,23 @@ export default function TestResultsPage() {
       if (response.ok) {
         toast.success('Results updated successfully');
         setShowEditModal(false);
-        fetchData(); // Refresh data
+        
+        // Update the local state immediately
+        setAttempts(prevAttempts => 
+          prevAttempts.map(attempt => 
+            attempt._id === selectedAttempt._id 
+              ? { ...attempt, answers: editedAnswers, score: newScore, passed }
+              : attempt
+          )
+        );
+        
+        // Also refresh data from server to ensure consistency
+        setTimeout(() => {
+          fetchData();
+        }, 500);
       } else {
-        toast.error('Failed to update results');
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Failed to update results');
       }
     } catch (error) {
       console.error('Error updating attempt:', error);

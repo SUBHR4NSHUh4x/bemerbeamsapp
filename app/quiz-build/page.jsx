@@ -126,6 +126,14 @@ function Page(props) {
     setNewQuiz((prevQuiz) => ({ ...prevQuiz, quizTitle: text }));
   }
 
+  const handleTimeLimitChange = (value) => {
+    setNewQuiz((prevQuiz) => ({ ...prevQuiz, timeLimit: parseInt(value) }));
+  };
+
+  const handlePassingScoreChange = (value) => {
+    setNewQuiz((prevQuiz) => ({ ...prevQuiz, passingScore: parseInt(value) }));
+  };
+
   const quizNavBarProps = {
     quizQuestions,
     newQuiz,
@@ -160,6 +168,43 @@ function Page(props) {
       <IconsComponents />
       <QuizBuildNav {...quizNavBarProps} />
       <QuizBuildTitle {...quizTitleProps} />
+      
+      {/* Quiz Settings Section */}
+      <div className="p-3 flex justify-between border border-yellow-500 rounded-md mt-4">
+        <div className="flex gap-4 items-center">
+          <div className="flex gap-2 items-center">
+            <div className="bg-yellow-500 px-4 py-1 rounded-md text-black">2</div>
+            <span className="font-bold">Quiz Settings : </span>
+          </div>
+          
+          <div className="flex gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium">Time Limit (minutes):</label>
+              <input
+                type="number"
+                min="1"
+                max="180"
+                value={newQuiz.timeLimit || 30}
+                onChange={(e) => handleTimeLimitChange(e.target.value)}
+                className="w-20 px-2 py-1 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium">Passing Score (%):</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={newQuiz.passingScore || 70}
+                onChange={(e) => handlePassingScoreChange(e.target.value)}
+                className="w-20 px-2 py-1 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <QuizBuildQuestions {...quizQuestionsProps} />
     </div>
   );

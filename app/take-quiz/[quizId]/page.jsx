@@ -140,7 +140,7 @@ export default function TakeQuizPage() {
       // Calculate score
       const totalPoints = answers.reduce((sum, answer) => sum + answer.points, 0);
       const earnedPoints = answers.reduce((sum, answer) => sum + (answer.isCorrect ? answer.points : 0), 0);
-      const score = Math.round((earnedPoints / totalPoints) * 100);
+      const score = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
       const passed = score >= quiz.passingScore;
 
       // Prepare attempt data
@@ -158,6 +158,8 @@ export default function TakeQuizPage() {
         answers,
       };
 
+      console.log('Submitting attempt data:', attemptData);
+
       // Submit attempt
       const response = await fetch('/api/quiz-attempts', {
         method: 'POST',
@@ -168,14 +170,20 @@ export default function TakeQuizPage() {
       });
 
       if (response.ok) {
+        console.log('Attempt submitted successfully');
         // Redirect to test access page without showing results
         sessionStorage.removeItem('quizUserInfo');
         router.push('/test-access');
       } else {
-        console.error('Failed to submit attempt');
+        const errorData = await response.json();
+        console.error('Failed to submit attempt:', errorData);
+        alert('Failed to submit test. Please try again.');
+        setIsSubmitted(false);
       }
     } catch (error) {
       console.error('Error submitting attempt:', error);
+      alert('Failed to submit test. Please try again.');
+      setIsSubmitted(false);
     }
   };
 

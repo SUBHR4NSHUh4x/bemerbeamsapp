@@ -160,6 +160,23 @@ export default function EnhancedQuizBuilder() {
       return;
     }
 
+    // Validate questions
+    for (let i = 0; i < questions.length; i++) {
+      const question = questions[i];
+      if (!question.question.trim()) {
+        toast.error(`Question ${i + 1} text is required`);
+        return;
+      }
+      if (!question.correctAnswer.trim()) {
+        toast.error(`Question ${i + 1} correct answer is required`);
+        return;
+      }
+      if (question.type === 'mcq' && (!question.choices || question.choices.length < 2)) {
+        toast.error(`Question ${i + 1} must have at least 2 choices`);
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const quizPayload = {
@@ -177,6 +194,8 @@ export default function EnhancedQuizBuilder() {
         })),
       };
 
+      console.log('Saving quiz with payload:', quizPayload);
+
       const response = await fetch('/api/quizzes', {
         method: 'POST',
         headers: {
@@ -186,16 +205,19 @@ export default function EnhancedQuizBuilder() {
       });
 
       if (response.ok) {
+        const result = await response.json();
+        console.log('Quiz saved successfully:', result);
         toast.success('Test saved successfully!');
         // Redirect to manage-quizzes page
         window.location.href = '/manage-quizzes';
       } else {
         const errorData = await response.json();
-        toast.error(errorData.error || 'Failed to save test');
+        console.error('Save failed:', errorData);
+        toast.error(errorData.message || errorData.error || 'Failed to save test');
       }
     } catch (error) {
-      toast.error('Failed to save test');
       console.error('Save error:', error);
+      toast.error('Failed to save test: ' + error.message);
     } finally {
       setLoading(false);
     }

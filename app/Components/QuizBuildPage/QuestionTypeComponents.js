@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck, faXmark } from '@fortawesome/free-solid-svg-icons';
 
 // MCQ Component
-export function MCQComponent({ question, onQuestionChange, onChoicesChange, onCorrectAnswerChange, questionNumber }) {
+export function MCQComponent({ question, onQuestionChange, onChoicesChange, onCorrectAnswerChange, onPointsChange, questionNumber }) {
   const prefixes = ['A', 'B', 'C', 'D'];
 
   const addChoice = () => {
@@ -44,6 +44,21 @@ export function MCQComponent({ question, onQuestionChange, onChoicesChange, onCo
           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
           placeholder="Enter your question here..."
           rows={3}
+        />
+      </div>
+
+      {/* Points Input */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Points
+        </label>
+        <input
+          type="number"
+          min="1"
+          max="10"
+          value={question.points || 1}
+          onChange={(e) => onPointsChange(parseInt(e.target.value))}
+          className="w-32 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
         />
       </div>
 
@@ -105,7 +120,7 @@ export function MCQComponent({ question, onQuestionChange, onChoicesChange, onCo
 }
 
 // Text Component
-export function TextComponent({ question, onQuestionChange, onCorrectAnswerChange, questionNumber }) {
+export function TextComponent({ question, onQuestionChange, onCorrectAnswerChange, onPointsChange, questionNumber }) {
   return (
     <div className="space-y-4">
       {/* Question Input */}
@@ -122,17 +137,32 @@ export function TextComponent({ question, onQuestionChange, onCorrectAnswerChang
         />
       </div>
 
+      {/* Points Input */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Points
+        </label>
+        <input
+          type="number"
+          min="1"
+          max="10"
+          value={question.points || 1}
+          onChange={(e) => onPointsChange(parseInt(e.target.value))}
+          className="w-32 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
+        />
+      </div>
+
       {/* Correct Answer */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Expected Answer
+          Correct Answer
         </label>
         <textarea
           value={question.correctAnswer}
           onChange={(e) => onCorrectAnswerChange(e.target.value)}
           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-          placeholder="Enter the expected answer..."
-          rows={2}
+          placeholder="Enter the correct answer..."
+          rows={3}
         />
       </div>
     </div>
@@ -140,7 +170,7 @@ export function TextComponent({ question, onQuestionChange, onCorrectAnswerChang
 }
 
 // True/False Component
-export function TrueFalseComponent({ question, onQuestionChange, onCorrectAnswerChange, questionNumber }) {
+export function TrueFalseComponent({ question, onQuestionChange, onCorrectAnswerChange, onPointsChange, questionNumber }) {
   return (
     <div className="space-y-4">
       {/* Question Input */}
@@ -152,8 +182,23 @@ export function TrueFalseComponent({ question, onQuestionChange, onCorrectAnswer
           value={question.question}
           onChange={(e) => onQuestionChange(e.target.value)}
           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-          placeholder="Enter your True/False question here..."
+          placeholder="Enter your question here..."
           rows={3}
+        />
+      </div>
+
+      {/* Points Input */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Points
+        </label>
+        <input
+          type="number"
+          min="1"
+          max="10"
+          value={question.points || 1}
+          onChange={(e) => onPointsChange(parseInt(e.target.value))}
+          className="w-32 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
         />
       </div>
 
@@ -162,50 +207,50 @@ export function TrueFalseComponent({ question, onQuestionChange, onCorrectAnswer
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Correct Answer
         </label>
-        <div className="flex space-x-4">
-          <label className="flex items-center">
-            <input
-              type="radio"
-              name="correctAnswer"
-              value="True"
-              checked={question.correctAnswer === "True"}
-              onChange={(e) => onCorrectAnswerChange(e.target.value)}
-              className="mr-2"
-            />
-            <span className="text-sm font-medium text-gray-700">True</span>
-          </label>
-          <label className="flex items-center">
-            <input
-              type="radio"
-              name="correctAnswer"
-              value="False"
-              checked={question.correctAnswer === "False"}
-              onChange={(e) => onCorrectAnswerChange(e.target.value)}
-              className="mr-2"
-            />
-            <span className="text-sm font-medium text-gray-700">False</span>
-          </label>
-        </div>
+        <select
+          value={question.correctAnswer}
+          onChange={(e) => onCorrectAnswerChange(e.target.value)}
+          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
+        >
+          <option value="">Select correct answer</option>
+          <option value="True">True</option>
+          <option value="False">False</option>
+        </select>
       </div>
     </div>
   );
 }
 
 // Fill in the Blank Component
-export function FillBlankComponent({ question, onQuestionChange, onCorrectAnswerChange, questionNumber }) {
+export function FillBlankComponent({ question, onQuestionChange, onCorrectAnswerChange, onPointsChange, questionNumber }) {
   return (
     <div className="space-y-4">
       {/* Question Input */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Question {questionNumber} (use ___ for blanks)
+          Question {questionNumber}
         </label>
         <textarea
           value={question.question}
           onChange={(e) => onQuestionChange(e.target.value)}
           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-          placeholder="Enter your question with ___ for blanks. Example: The capital of France is ___."
+          placeholder="Enter your fill-in-the-blank question here..."
           rows={3}
+        />
+      </div>
+
+      {/* Points Input */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Points
+        </label>
+        <input
+          type="number"
+          min="1"
+          max="10"
+          value={question.points || 1}
+          onChange={(e) => onPointsChange(parseInt(e.target.value))}
+          className="w-32 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
         />
       </div>
 
@@ -218,8 +263,8 @@ export function FillBlankComponent({ question, onQuestionChange, onCorrectAnswer
           type="text"
           value={question.correctAnswer}
           onChange={(e) => onCorrectAnswerChange(e.target.value)}
-          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-          placeholder="Enter the correct answer for the blank..."
+          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
+          placeholder="Enter the correct answer..."
         />
       </div>
     </div>
