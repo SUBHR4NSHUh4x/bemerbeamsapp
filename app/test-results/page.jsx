@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -19,8 +19,10 @@ export default function TestResultsPage() {
   const [selectedAttempt, setSelectedAttempt] = useState(null);
   const [editedAnswers, setEditedAnswers] = useState([]);
   const [lastRefresh, setLastRefresh] = useState(null);
+  const [viewMode, setViewMode] = useState('quizzes'); // 'quizzes' or 'details'
+  const [selectedQuizForDetails, setSelectedQuizForDetails] = useState(null);
 
-  // Auto-refresh every 30 seconds
+  // Auto-refresh every 15 seconds for faster updates
   useEffect(() => {
     if (isLoaded && !user) {
       router.push('/sign-in');
@@ -36,7 +38,7 @@ export default function TestResultsPage() {
         console.log('Auto-refreshing test results...');
         fetchData(true); // Silent refresh
       }
-    }, 30000); // 30 seconds
+    }, 15000); // 15 seconds for faster updates
 
     return () => clearInterval(interval);
   }, [isLoaded, user, router]);
@@ -106,6 +108,44 @@ export default function TestResultsPage() {
     await fetchData();
   };
 
+  // Group attempts by quiz
+  const attemptsByQuiz = useMemo(() => {
+    const grouped = {};
+    
+    attempts.forEach(attempt => {
+      const quizId = attempt.quizId?._id || attempt.quizId || 'no-quiz';
+      const quizTitle = attempt.quizId?.quizTitle || 'Unknown Quiz';
+      
+      if (!grouped[quizId]) {
+        grouped[quizId] = {
+          quizId,
+          quizTitle,
+          attempts: [],
+          totalAttempts: 0,
+          averageScore: 0,
+          passedCount: 0
+        };
+      }
+      
+      grouped[quizId].attempts.push(attempt);
+      grouped[quizId].totalAttempts++;
+      
+      if (attempt.passed) {
+        grouped[quizId].passedCount++;
+      }
+    });
+    
+    // Calculate averages
+    Object.values(grouped).forEach(quiz => {
+      if (quiz.totalAttempts > 0) {
+        const totalScore = quiz.attempts.reduce((sum, attempt) => sum + attempt.score, 0);
+        quiz.averageScore = Math.round(totalScore / quiz.totalAttempts);
+      }
+    });
+    
+    return grouped;
+  }, [attempts]);
+
   const handleEditAttempt = (attempt) => {
     setSelectedAttempt(attempt);
     setEditedAnswers([...attempt.answers]);
@@ -115,6 +155,16 @@ export default function TestResultsPage() {
   const handleViewDetails = (attempt) => {
     setSelectedAttempt(attempt);
     setShowDetailsModal(true);
+  };
+
+  const handleViewQuizDetails = (quizId, quizTitle) => {
+    setSelectedQuizForDetails({ quizId, quizTitle });
+    setViewMode('details');
+  };
+
+  const handleBackToQuizzes = () => {
+    setViewMode('quizzes');
+    setSelectedQuizForDetails(null);
   };
 
   const handleAnswerToggle = (answerIndex, isCorrect) => {
@@ -177,23 +227,12 @@ export default function TestResultsPage() {
     }
   };
 
-  const filteredAttempts = attempts.filter(attempt => {
-    // If filtering by specific quiz
-    if (selectedQuiz === 'all') return true;
-    
-    // Skip attempts without quizId when filtering by specific quiz
-    if (!attempt.quizId) {
-      return false;
-    }
-    
-    // Check if the attempt's quizId matches the selected quiz
-    // Handle both string and ObjectId comparisons
-    const attemptQuizId = attempt.quizId._id || attempt.quizId;
-    return attemptQuizId === selectedQuiz;
-  });
-
   const exportCSV = () => {
-    if (!filteredAttempts.length) return;
+    const currentAttempts = viewMode === 'details' && selectedQuizForDetails 
+      ? attemptsByQuiz[selectedQuizForDetails.quizId]?.attempts || []
+      : attempts;
+
+    if (!currentAttempts.length) return;
     
     const header = [
       'Employee Name',
@@ -207,7 +246,7 @@ export default function TestResultsPage() {
       'Duration (minutes)'
     ];
     
-    const rows = filteredAttempts.map(attempt => {
+    const rows = currentAttempts.map(attempt => {
       const totalMarks = attempt.answers.reduce((sum, answer) => sum + answer.points, 0);
       const securedMarks = attempt.answers.reduce((sum, answer) => sum + (answer.isCorrect ? answer.points : 0), 0);
       
@@ -261,6 +300,11 @@ export default function TestResultsPage() {
               <h1 className="text-2xl font-bold text-gray-900">
                 Test Results Management
               </h1>
+              {viewMode === 'details' && selectedQuizForDetails && (
+                <span className="text-lg text-gray-600">
+                  → {selectedQuizForDetails.quizTitle}
+                </span>
+              )}
             </div>
             
             <div className="flex items-center space-x-4">
@@ -310,141 +354,208 @@ export default function TestResultsPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <label className="text-sm font-medium text-gray-700">Filter by Quiz:</label>
-              <select
-                value={selectedQuiz}
-                onChange={(e) => setSelectedQuiz(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
-              >
-                <option value="all">All Quizzes</option>
-                {quizzes.map(quiz => (
-                  <option key={quiz._id} value={quiz._id}>
-                    {quiz.quizTitle}
-                  </option>
-                ))}
-              </select>
+        {viewMode === 'quizzes' ? (
+          // Quiz Overview Mode
+          <div>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Quiz Overview</h2>
+              <p className="text-gray-600">Click on any quiz to view detailed responses from all users</p>
             </div>
-            
-            {/* Results Summary */}
-            <div className="text-sm text-gray-600">
-              Showing {filteredAttempts.length} of {attempts.length} total results
+
+            {/* Quiz Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Object.values(attemptsByQuiz).map((quiz) => (
+                <div key={quiz.quizId} className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
+                  <div className="flex justify-between items-start mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">{quiz.quizTitle}</h3>
+                    <span className="text-sm text-gray-500">ID: {quiz.quizId}</span>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Total Attempts:</span>
+                      <span className="font-semibold">{quiz.totalAttempts}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Average Score:</span>
+                      <span className="font-semibold">{quiz.averageScore}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Passed:</span>
+                      <span className="font-semibold text-green-600">{quiz.passedCount}/{quiz.totalAttempts}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Pass Rate:</span>
+                      <span className="font-semibold">
+                        {quiz.totalAttempts > 0 ? Math.round((quiz.passedCount / quiz.totalAttempts) * 100) : 0}%
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={() => handleViewQuizDetails(quiz.quizId, quiz.quizTitle)}
+                    className="w-full mt-4 bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors"
+                  >
+                    View All Responses ({quiz.totalAttempts})
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Summary Stats */}
+            <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Overall Statistics</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{Object.keys(attemptsByQuiz).length}</div>
+                  <div className="text-sm text-gray-600">Total Quizzes</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">{attempts.length}</div>
+                  <div className="text-sm text-gray-600">Total Attempts</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-yellow-600">
+                    {attempts.length > 0 ? Math.round(attempts.reduce((sum, a) => sum + a.score, 0) / attempts.length) : 0}%
+                  </div>
+                  <div className="text-sm text-gray-600">Average Score</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {attempts.length > 0 ? Math.round((attempts.filter(a => a.passed).length / attempts.length) * 100) : 0}%
+                  </div>
+                  <div className="text-sm text-gray-600">Overall Pass Rate</div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          // Detailed Responses Mode
+          <div>
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <button
+                  onClick={handleBackToQuizzes}
+                  className="text-blue-600 hover:text-blue-800 mb-2 flex items-center"
+                >
+                  ← Back to Quiz Overview
+                </button>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Detailed Responses - {selectedQuizForDetails?.quizTitle}
+                </h2>
+                <p className="text-gray-600">All user responses for this quiz</p>
+              </div>
+              
+              <div className="text-sm text-gray-600">
+                {selectedQuizForDetails && attemptsByQuiz[selectedQuizForDetails.quizId]?.attempts.length || 0} responses
+              </div>
+            </div>
 
-        {/* Results Table */}
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Employee Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Store Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Quiz Title
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Marks Secured
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Marks
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Percentage
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {loading ? (
-                  <tr>
-                    <td colSpan="9" className="px-6 py-4 text-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mx-auto"></div>
-                    </td>
-                  </tr>
-                ) : filteredAttempts.length === 0 ? (
-                  <tr>
-                    <td colSpan="9" className="px-6 py-4 text-center text-gray-500">
-                      No test results found
-                    </td>
-                  </tr>
-                ) : (
-                  filteredAttempts.map((attempt) => {
-                    const totalMarks = attempt.answers.reduce((sum, answer) => sum + answer.points, 0);
-                    const securedMarks = attempt.answers.reduce((sum, answer) => sum + (answer.isCorrect ? answer.points : 0), 0);
-                    
-                    return (
-                      <tr key={attempt._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {attempt.userName}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {attempt.storeName || 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {attempt.quiz?.quizTitle || (attempt.quizId ? 'Unknown Quiz' : 'No Quiz Data')}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {securedMarks}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {totalMarks}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {attempt.score}%
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            attempt.passed 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {attempt.passed ? 'Passed' : 'Failed'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(attempt.endTime).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => handleViewDetails(attempt)}
-                              className="text-blue-600 hover:text-blue-900 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded-lg transition-colors"
-                            >
-                              View Responses
-                            </button>
-                            <button
-                              onClick={() => handleEditAttempt(attempt)}
-                              className="text-yellow-600 hover:text-yellow-900 bg-yellow-100 hover:bg-yellow-200 px-3 py-1 rounded-lg transition-colors"
-                            >
-                              Edit
-                            </button>
-                          </div>
+            {/* Detailed Responses Table */}
+            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Employee Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Store Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Marks Secured
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Total Marks
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Percentage
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {loading ? (
+                      <tr>
+                        <td colSpan="8" className="px-6 py-4 text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mx-auto"></div>
                         </td>
                       </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                    ) : selectedQuizForDetails && attemptsByQuiz[selectedQuizForDetails.quizId]?.attempts.length === 0 ? (
+                      <tr>
+                        <td colSpan="8" className="px-6 py-4 text-center text-gray-500">
+                          No responses found for this quiz
+                        </td>
+                      </tr>
+                    ) : (
+                      selectedQuizForDetails && attemptsByQuiz[selectedQuizForDetails.quizId]?.attempts.map((attempt) => {
+                        const totalMarks = attempt.answers.reduce((sum, answer) => sum + answer.points, 0);
+                        const securedMarks = attempt.answers.reduce((sum, answer) => sum + (answer.isCorrect ? answer.points : 0), 0);
+                        
+                        return (
+                          <tr key={attempt._id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {attempt.userName}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {attempt.storeName || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {securedMarks}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {totalMarks}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {attempt.score}%
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                attempt.passed 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {attempt.passed ? 'Passed' : 'Failed'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {new Date(attempt.endTime).toLocaleDateString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => handleViewDetails(attempt)}
+                                  className="text-blue-600 hover:text-blue-900 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded-lg transition-colors"
+                                >
+                                  View Responses
+                                </button>
+                                <button
+                                  onClick={() => handleEditAttempt(attempt)}
+                                  className="text-yellow-600 hover:text-yellow-900 bg-yellow-100 hover:bg-yellow-200 px-3 py-1 rounded-lg transition-colors"
+                                >
+                                  Edit
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </main>
 
       {/* Details Modal - Shows all responses */}
