@@ -70,7 +70,7 @@ export default function EmployeePage() {
 
         {/* Employee Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Link href="/quizzes">
+          <Link href="/test-access">
             <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow cursor-pointer border border-gray-200">
               <div className="flex items-center justify-center w-12 h-12 bg-yellow-100 rounded-lg mb-4">
                 <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

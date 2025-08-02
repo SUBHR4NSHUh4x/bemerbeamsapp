@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { connectToDB } from '@/libs/mongoDB';
 import QuizAttempt from '@/app/models/QuizAttemptSchema';
+import Quiz from '@/app/models/QuizSchema';
 
 export async function GET(request) {
   await connectToDB();

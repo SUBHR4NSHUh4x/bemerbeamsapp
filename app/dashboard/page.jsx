@@ -113,7 +113,7 @@ export default function DashboardPage() {
           {currentRole === 'student' ? (
             <>
               {/* Student Cards */}
-              <Link href="/quizzes">
+              <Link href="/test-access">
                 <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow cursor-pointer border border-gray-200">
                   <div className="flex items-center justify-center w-12 h-12 bg-yellow-100 rounded-lg mb-4">
                     <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
