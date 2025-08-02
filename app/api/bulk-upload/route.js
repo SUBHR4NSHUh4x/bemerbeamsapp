@@ -171,9 +171,16 @@ export async function POST(request) {
 
         // Handle different question types
         if (question.type === 'mcq') {
-          // Parse choices (comma-separated or multiple columns)
+          // Parse choices (pipe-separated or comma-separated for backward compatibility)
           const choicesText = normalizedRow.choices || '';
-          const choices = choicesText.split(',').map(choice => choice.trim()).filter(Boolean);
+          let choices = [];
+          
+          // Try pipe separator first (new format), then comma (old format)
+          if (choicesText.includes('|')) {
+            choices = choicesText.split('|').map(choice => choice.trim()).filter(Boolean);
+          } else {
+            choices = choicesText.split(',').map(choice => choice.trim()).filter(Boolean);
+          }
           
           if (choices.length < 2) {
             errors.push(`Row ${index + 1}: MCQ questions need at least 2 choices`);
@@ -292,5 +299,14 @@ export async function GET() {
     message: 'Bulk upload endpoint',
     instructions: 'Upload Excel/CSV file with columns: Question, Type, Choices, CorrectAnswer, Explanation, Points, TimeLimit',
     supportedFormats: ['xlsx', 'xls', 'csv'],
+    format: {
+      question: 'Required - The question text',
+      type: 'Required - mcq, true_false, text, fill_blank (default: mcq)',
+      choices: 'For MCQ: use | to separate choices (e.g., "Choice A|Choice B|Choice C")',
+      correctAnswer: 'Required - Must match one of the choices for MCQ',
+      explanation: 'Optional - Explanation for the answer',
+      points: 'Optional - Points for this question (default: 1)',
+      timeLimit: 'Optional - Time limit in seconds (default: 30)'
+    }
   });
 } 

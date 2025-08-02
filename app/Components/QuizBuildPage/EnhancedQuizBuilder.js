@@ -260,14 +260,14 @@ export default function EnhancedQuizBuilder() {
   };
 
   const downloadTemplate = () => {
-    // Create sample data for template
+    // Create comprehensive sample data for template
     const sampleData = [
       {
         Question: 'What is the capital of France?',
         Type: 'mcq',
-        Choices: 'Paris, London, Berlin, Madrid',
+        Choices: 'Paris|London|Berlin|Madrid',
         CorrectAnswer: 'Paris',
-        Explanation: 'Paris is the capital and largest city of France.',
+        Explanation: 'Paris is the capital and largest city of France, known for its rich history and culture.',
         Points: '1',
         TimeLimit: '30'
       },
@@ -276,7 +276,7 @@ export default function EnhancedQuizBuilder() {
         Type: 'true_false',
         Choices: '',
         CorrectAnswer: 'True',
-        Explanation: 'The Earth is approximately spherical in shape.',
+        Explanation: 'The Earth is approximately spherical in shape, though it is slightly flattened at the poles.',
         Points: '1',
         TimeLimit: '30'
       },
@@ -290,13 +290,31 @@ export default function EnhancedQuizBuilder() {
         TimeLimit: '30'
       },
       {
-        Question: 'Explain the process of photosynthesis.',
+        Question: 'Explain the process of photosynthesis in detail.',
         Type: 'text',
         Choices: '',
-        CorrectAnswer: 'Photosynthesis is the process by which plants convert sunlight into energy.',
-        Explanation: 'A detailed explanation of the photosynthesis process.',
+        CorrectAnswer: 'Photosynthesis is the process by which plants convert sunlight, carbon dioxide, and water into glucose and oxygen.',
+        Explanation: 'A detailed explanation of how plants use sunlight to produce energy.',
         Points: '2',
         TimeLimit: '60'
+      },
+      {
+        Question: 'Which programming languages are object-oriented?',
+        Type: 'mcq',
+        Choices: 'Java|Python|C++|All of the above',
+        CorrectAnswer: 'All of the above',
+        Explanation: 'Java, Python, and C++ all support object-oriented programming principles.',
+        Points: '1',
+        TimeLimit: '45'
+      },
+      {
+        Question: 'Water boils at 100 degrees Celsius at sea level.',
+        Type: 'true_false',
+        Choices: '',
+        CorrectAnswer: 'True',
+        Explanation: 'At standard atmospheric pressure (1 atm), water boils at 100°C.',
+        Points: '1',
+        TimeLimit: '30'
       }
     ];
 
@@ -305,23 +323,48 @@ export default function EnhancedQuizBuilder() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Questions Template');
 
-    // Add instructions sheet
+    // Add detailed instructions sheet
     const instructions = [
-      { Column: 'Question', Description: 'The question text (required)' },
+      { Column: 'Question', Description: 'The question text (required). Be clear and specific.' },
       { Column: 'Type', Description: 'Question type: mcq, true_false, text, fill_blank (default: mcq)' },
-      { Column: 'Choices', Description: 'For MCQ: comma-separated choices. For others: leave empty' },
-      { Column: 'CorrectAnswer', Description: 'The correct answer (required)' },
-      { Column: 'Explanation', Description: 'Explanation for the answer (optional)' },
-      { Column: 'Points', Description: 'Points for this question (default: 1)' },
-      { Column: 'TimeLimit', Description: 'Time limit in seconds (default: 30)' }
+      { Column: 'Choices', Description: 'For MCQ: use | to separate choices (e.g., "Choice A|Choice B|Choice C"). For other types: leave empty.' },
+      { Column: 'CorrectAnswer', Description: 'The correct answer (required). Must match exactly one of the choices for MCQ.' },
+      { Column: 'Explanation', Description: 'Explanation for the answer (optional but recommended)' },
+      { Column: 'Points', Description: 'Points for this question (default: 1, recommended: 1-5)' },
+      { Column: 'TimeLimit', Description: 'Time limit in seconds (default: 30, recommended: 30-120)' }
     ];
 
     const instructionsSheet = XLSX.utils.json_to_sheet(instructions);
     XLSX.utils.book_append_sheet(workbook, instructionsSheet, 'Instructions');
 
+    // Add question type examples sheet
+    const typeExamples = [
+      { Type: 'mcq', Description: 'Multiple Choice Questions', Example: 'Use | to separate choices. Correct answer must match one choice exactly.' },
+      { Type: 'true_false', Description: 'True/False Questions', Example: 'Correct answer must be "True" or "False" (case-insensitive).' },
+      { Type: 'text', Description: 'Text/Short Answer Questions', Example: 'Students type their answer. Correct answer is the expected response.' },
+      { Type: 'fill_blank', Description: 'Fill in the Blank Questions', Example: 'Use ___ in question text. Correct answer is the expected word/phrase.' }
+    ];
+
+    const examplesSheet = XLSX.utils.json_to_sheet(typeExamples);
+    XLSX.utils.book_append_sheet(workbook, examplesSheet, 'Question Types');
+
+    // Add formatting rules sheet
+    const formattingRules = [
+      { Rule: 'File Format', Description: 'Excel (.xlsx) or CSV files only' },
+      { Rule: 'File Size', Description: 'Maximum 5MB' },
+      { Rule: 'Headers', Description: 'First row should contain column headers (Question, Type, etc.)' },
+      { Rule: 'Required Fields', Description: 'Question and CorrectAnswer are required for all question types' },
+      { Rule: 'MCQ Choices', Description: 'Use | (pipe) to separate multiple choices, not commas' },
+      { Rule: 'Case Sensitivity', Description: 'Correct answers are case-insensitive for MCQ and True/False' },
+      { Rule: 'Special Characters', Description: 'Avoid special characters in question text that might break parsing' }
+    ];
+
+    const rulesSheet = XLSX.utils.json_to_sheet(formattingRules);
+    XLSX.utils.book_append_sheet(workbook, rulesSheet, 'Formatting Rules');
+
     // Download file
     XLSX.writeFile(workbook, 'quiz_questions_template.xlsx');
-    toast.success('Template downloaded successfully!');
+    toast.success('Comprehensive template downloaded successfully!');
   };
 
   return (
@@ -357,146 +400,86 @@ export default function EnhancedQuizBuilder() {
         </div>
       </div>
 
-      {/* Quiz Basic Info */}
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4">Quiz Information</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Test Title *
-            </label>
-            <input
-              type="text"
-              value={quizData.quizTitle}
-              onChange={(e) => setQuizData({...quizData, quizTitle: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-              placeholder="Enter test title"
-            />
+      {/* Quiz Basic Info - Only for Manual Creation */}
+      {activeTab === 'manual' && (
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Quiz Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Test Title *
+              </label>
+              <input
+                type="text"
+                value={quizData.quizTitle}
+                onChange={(e) => setQuizData({...quizData, quizTitle: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                placeholder="Enter test title"
+              />
+            </div>
+            
+
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Time Limit (minutes)
+              </label>
+              <input
+                type="number"
+                value={quizData.timeLimit}
+                onChange={(e) => setQuizData({...quizData, timeLimit: parseInt(e.target.value)})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                min="1"
+                max="180"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Passing Score (%)
+              </label>
+              <input
+                type="number"
+                value={quizData.passingScore}
+                onChange={(e) => setQuizData({...quizData, passingScore: parseInt(e.target.value)})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                min="0"
+                max="100"
+              />
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="isPublic"
+                checked={quizData.isPublic}
+                onChange={(e) => setQuizData({...quizData, isPublic: e.target.checked})}
+                className="h-4 w-4 text-yellow-500 focus:ring-yellow-500 border-gray-300 rounded"
+              />
+              <label htmlFor="isPublic" className="ml-2 text-sm text-gray-700">
+                Make quiz public
+              </label>
+            </div>
           </div>
-          
 
-
-          <div>
+          <div className="mt-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Time Limit (minutes)
+              Description
             </label>
-            <input
-              type="number"
-              value={quizData.timeLimit}
-              onChange={(e) => setQuizData({...quizData, timeLimit: parseInt(e.target.value)})}
+            <textarea
+              value={quizData.description}
+              onChange={(e) => setQuizData({...quizData, description: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-              min="1"
-              max="180"
+              rows="3"
+              placeholder="Enter quiz description"
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Passing Score (%)
-            </label>
-            <input
-              type="number"
-              value={quizData.passingScore}
-              onChange={(e) => setQuizData({...quizData, passingScore: parseInt(e.target.value)})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-              min="0"
-              max="100"
-            />
-          </div>
-
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="isPublic"
-              checked={quizData.isPublic}
-              onChange={(e) => setQuizData({...quizData, isPublic: e.target.checked})}
-              className="h-4 w-4 text-yellow-500 focus:ring-yellow-500 border-gray-300 rounded"
-            />
-            <label htmlFor="isPublic" className="ml-2 text-sm text-gray-700">
-              Make quiz public
-            </label>
           </div>
         </div>
-
-        <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Description
-          </label>
-          <textarea
-            value={quizData.description}
-            onChange={(e) => setQuizData({...quizData, description: e.target.value})}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-            rows="3"
-            placeholder="Enter quiz description"
-          />
-        </div>
-      </div>
+      )}
 
       {/* Manual Question Creation Tab */}
       {activeTab === 'manual' && (
         <div className="space-y-6">
-          {/* Quiz Details Form */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Quiz Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Test Title *
-                </label>
-                <input
-                  type="text"
-                  value={quizData.quizTitle}
-                  onChange={(e) => setQuizData({ ...quizData, quizTitle: e.target.value })}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                  placeholder="Enter test title"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Category
-                </label>
-                <select
-                  value={quizData.category}
-                  onChange={(e) => setQuizData({ ...quizData, category: e.target.value })}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                >
-                  <option value="General">General</option>
-                  <option value="Science">Science</option>
-                  <option value="Math">Math</option>
-                  <option value="History">History</option>
-                  <option value="Literature">Literature</option>
-                  <option value="Technology">Technology</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Difficulty
-                </label>
-                <select
-                  value={quizData.difficulty}
-                  onChange={(e) => setQuizData({ ...quizData, difficulty: e.target.value })}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                >
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description
-                </label>
-                <textarea
-                  value={quizData.description}
-                  onChange={(e) => setQuizData({ ...quizData, description: e.target.value })}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                  placeholder="Enter quiz description"
-                  rows={2}
-                />
-              </div>
-            </div>
-          </div>
 
           {/* Questions Section */}
           <div className="bg-white rounded-lg shadow p-6">
@@ -546,8 +529,9 @@ export default function EnhancedQuizBuilder() {
               <p>• Upload Excel (.xlsx, .xls) or CSV files with your questions</p>
               <p>• Maximum file size: 5MB</p>
               <p>• Required columns: Question, Type, Choices, CorrectAnswer</p>
+              <p>• For MCQ questions: Use | (pipe) to separate choices (e.g., &quot;Choice A|Choice B|Choice C&quot;)</p>
               <p>• Supported question types: MCQ, True/False, Text, Fill in Blank</p>
-              <p>• Download the template below for the correct format</p>
+              <p>• Download the comprehensive template below for detailed examples and formatting rules</p>
             </div>
           </div>
 
