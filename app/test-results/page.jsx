@@ -87,16 +87,12 @@ export default function TestResultsPage() {
       setAttempts(sortedAttempts);
       setLastRefresh(new Date());
       
-      // Only show success toast on manual refresh, not auto-refresh
-      if (!silent) {
-        toast.success(`Loaded ${sortedAttempts.length} test results`);
-      }
+      // Removed toast notifications for loading data
+      // Data loading happens silently now
     } catch (error) {
       console.error('Error fetching data:', error);
-      // Only show error toast on manual refresh or initial load, not auto-refresh
-      if (!silent) {
-        toast.error(`Failed to load test results: ${error.message}`);
-      }
+      // No toast notifications for data loading errors
+      // Errors are only logged to console
     } finally {
       setLoading(false);
       setRefreshing(false);
