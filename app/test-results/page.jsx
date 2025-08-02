@@ -335,6 +335,11 @@ export default function TestResultsPage() {
                   → {selectedQuizForDetails.quizTitle}
                 </span>
               )}
+              {viewMode === 'quizzes' && (
+                <span className="text-lg text-gray-600">
+                  → All Results Overview
+                </span>
+              )}
             </div>
             
             <div className="flex items-center space-x-4">
@@ -400,81 +405,15 @@ export default function TestResultsPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {viewMode === 'quizzes' ? (
-          // Quiz Overview Mode
+          // Comprehensive Results Table Mode
           <div>
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Quiz Overview</h2>
-              <p className="text-gray-600">Click on any quiz to view detailed responses from all users</p>
-            </div>
-
-            {/* Quiz Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Object.values(attemptsByQuiz).map((quiz) => {
-                // Check if there are recent attempts (within last 5 minutes)
-                const recentAttempts = quiz.attempts.filter(attempt => {
-                  const attemptTime = new Date(attempt.endTime || attempt.createdAt);
-                  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-                  return attemptTime > fiveMinutesAgo;
-                });
-                
-                const hasRecentAttempts = recentAttempts.length > 0;
-                const latestAttempt = quiz.attempts[0]; // Already sorted by most recent
-                
-                return (
-                  <div key={quiz.quizId} className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow relative">
-                    {hasRecentAttempts && (
-                      <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
-                        NEW
-                      </div>
-                    )}
-                    
-                    <div className="flex justify-between items-start mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">{quiz.quizTitle}</h3>
-                      <span className="text-sm text-gray-500">ID: {quiz.quizId}</span>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Total Attempts:</span>
-                        <span className="font-semibold">{quiz.totalAttempts}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Average Score:</span>
-                        <span className="font-semibold">{quiz.averageScore}%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Passed:</span>
-                        <span className="font-semibold text-green-600">{quiz.passedCount}/{quiz.totalAttempts}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Pass Rate:</span>
-                        <span className="font-semibold">
-                          {quiz.totalAttempts > 0 ? Math.round((quiz.passedCount / quiz.totalAttempts) * 100) : 0}%
-                        </span>
-                      </div>
-                      {latestAttempt && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Latest:</span>
-                          <span className="text-sm text-gray-500">
-                            {new Date(latestAttempt.endTime || latestAttempt.createdAt).toLocaleString()}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <button
-                      onClick={() => handleViewQuizDetails(quiz.quizId, quiz.quizTitle)}
-                      className="w-full mt-4 bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors"
-                    >
-                      View All Responses ({quiz.totalAttempts})
-                    </button>
-                  </div>
-                );
-              })}
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">All Test Results</h2>
+              <p className="text-gray-600">Complete overview of all quiz attempts from every student/employee</p>
             </div>
 
             {/* Summary Stats */}
-            <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
+            <div className="mb-6 bg-white rounded-lg shadow-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Overall Statistics</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
@@ -497,6 +436,129 @@ export default function TestResultsPage() {
                   </div>
                   <div className="text-sm text-gray-600">Overall Pass Rate</div>
                 </div>
+              </div>
+            </div>
+
+            {/* Comprehensive Results Table */}
+            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Quiz Title
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Employee Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Store Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Marks Secured
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Total Marks
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Percentage
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        View & Edit
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {loading ? (
+                      <tr>
+                        <td colSpan="9" className="px-6 py-4 text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mx-auto"></div>
+                        </td>
+                      </tr>
+                    ) : attempts.length === 0 ? (
+                      <tr>
+                        <td colSpan="9" className="px-6 py-4 text-center text-gray-500">
+                          No test results found
+                        </td>
+                      </tr>
+                    ) : (
+                      attempts.map((attempt) => {
+                        const totalMarks = attempt.answers.reduce((sum, answer) => sum + answer.points, 0);
+                        const securedMarks = attempt.answers.reduce((sum, answer) => sum + (answer.isCorrect ? answer.points : 0), 0);
+                        const quizTitle = attempt.quizId?.quizTitle || 'Unknown Quiz';
+                        
+                        // Check if this is a recent attempt (within last 5 minutes)
+                        const attemptTime = new Date(attempt.endTime || attempt.createdAt);
+                        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+                        const isRecent = attemptTime > fiveMinutesAgo;
+                        
+                        return (
+                          <tr key={attempt._id} className={`hover:bg-gray-50 ${isRecent ? 'bg-yellow-50' : ''}`}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              <div className="flex items-center">
+                                {quizTitle}
+                                {isRecent && (
+                                  <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
+                                    NEW
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {attempt.userName}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {attempt.storeName || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
+                              {securedMarks}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {totalMarks}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
+                              {attempt.score}%
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                attempt.passed 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {attempt.passed ? 'Passed' : 'Failed'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {new Date(attempt.endTime || attempt.createdAt).toLocaleString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => handleViewDetails(attempt)}
+                                  className="text-blue-600 hover:text-blue-900 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded-lg transition-colors text-xs"
+                                >
+                                  View
+                                </button>
+                                <button
+                                  onClick={() => handleEditAttempt(attempt)}
+                                  className="text-yellow-600 hover:text-yellow-900 bg-yellow-100 hover:bg-yellow-200 px-3 py-1 rounded-lg transition-colors text-xs"
+                                >
+                                  Edit
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
