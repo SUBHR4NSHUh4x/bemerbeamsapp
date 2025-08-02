@@ -24,6 +24,18 @@ const quizAttemptSchema = new Schema({
   answers: [answerSchema],
 }, { timestamps: true });
 
+// Add pre-save middleware for debugging
+quizAttemptSchema.pre('save', function(next) {
+  console.log('Saving quiz attempt:', {
+    quizId: this.quizId,
+    userName: this.userName,
+    score: this.score,
+    passed: this.passed,
+    answersCount: this.answers.length
+  });
+  next();
+});
+
 const QuizAttempt = mongoose.models.QuizAttempt || mongoose.model('QuizAttempt', quizAttemptSchema);
 
 export default QuizAttempt;

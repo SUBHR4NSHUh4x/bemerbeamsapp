@@ -44,9 +44,13 @@ export async function POST(request) {
       return NextResponse.json({ error: 'answers array is required' }, { status: 400 });
     }
     
+    console.log('Converting quizId to ObjectId:', data.quizId);
     data.quizId = new mongoose.Types.ObjectId(data.quizId);
+    
+    console.log('Creating quiz attempt with data:', data);
     const attempt = await QuizAttempt.create(data);
     console.log('Attempt saved successfully:', attempt._id);
+    console.log('Full saved attempt:', attempt);
     
     return NextResponse.json({ success: true, attempt });
   } catch (error) {

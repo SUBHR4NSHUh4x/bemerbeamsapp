@@ -33,12 +33,23 @@ export default function TestResultsPage() {
       // Fetch all quizzes
       const quizzesResponse = await fetch('/api/quizzes');
       const quizzesData = await quizzesResponse.json();
+      console.log('Quizzes data:', quizzesData);
       setQuizzes(quizzesData.quizzes || []);
 
       // Fetch all attempts
       const attemptsResponse = await fetch('/api/quiz-attempts/all');
       const attemptsData = await attemptsResponse.json();
-      setAttempts(attemptsData.attempts || []);
+      console.log('Attempts data:', attemptsData);
+      console.log('Number of attempts found:', attemptsData.attempts?.length || 0);
+      
+      // Include all attempts, even those with null quizId
+      const allAttempts = attemptsData.attempts || [];
+      
+      console.log('All attempts:', allAttempts);
+      console.log('Attempts with quizId:', allAttempts.filter(a => a.quizId).length);
+      console.log('Attempts without quizId:', allAttempts.filter(a => !a.quizId).length);
+      
+      setAttempts(allAttempts);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Failed to load test results');
@@ -119,8 +130,18 @@ export default function TestResultsPage() {
   };
 
   const filteredAttempts = attempts.filter(attempt => {
+    // If filtering by specific quiz
     if (selectedQuiz === 'all') return true;
-    return attempt.quizId === selectedQuiz;
+    
+    // Skip attempts without quizId when filtering by specific quiz
+    if (!attempt.quizId) {
+      return false;
+    }
+    
+    // Check if the attempt's quizId matches the selected quiz
+    // Handle both string and ObjectId comparisons
+    const attemptQuizId = attempt.quizId._id || attempt.quizId;
+    return attemptQuizId === selectedQuiz;
   });
 
   const exportCSV = () => {
@@ -301,7 +322,7 @@ export default function TestResultsPage() {
                           {attempt.storeName || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {attempt.quiz?.quizTitle || 'N/A'}
+                          {attempt.quiz?.quizTitle || (attempt.quizId ? 'Unknown Quiz' : 'No Quiz Data')}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {securedMarks}
@@ -361,7 +382,7 @@ export default function TestResultsPage() {
                     Quiz Responses - {selectedAttempt.userName}
                   </h3>
                   <p className="text-sm text-gray-500 mt-1">
-                    {selectedAttempt.quiz?.quizTitle} • {new Date(selectedAttempt.endTime).toLocaleDateString()}
+                    {selectedAttempt.quiz?.quizTitle || 'Unknown Quiz'} • {new Date(selectedAttempt.endTime).toLocaleDateString()}
                   </p>
                 </div>
                 <button
@@ -562,4 +583,4 @@ export default function TestResultsPage() {
       )}
     </div>
   );
-} 
+}
