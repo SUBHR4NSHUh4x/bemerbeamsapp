@@ -29,6 +29,7 @@ export default function TestResultsPage() {
       
       const timestamp = Date.now();
       
+      // Fetch quizzes first
       const quizzesResponse = await fetch(`/api/quizzes?t=${timestamp}`, {
         cache: 'no-store',
         headers: {
@@ -45,12 +46,14 @@ export default function TestResultsPage() {
       const quizzesData = await quizzesResponse.json();
       setQuizzes(quizzesData.quizzes || []);
 
-      const attemptsResponse = await fetch(`/api/quiz-attempts/all?t=${timestamp}`, {
+      // Fetch attempts with aggressive cache busting
+      const attemptsResponse = await fetch(`/api/quiz-attempts/all?t=${timestamp}&v=${Math.random()}`, {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
-          'Expires': '0'
+          'Expires': '0',
+          'X-Requested-With': 'XMLHttpRequest'
         }
       });
       
@@ -61,10 +64,15 @@ export default function TestResultsPage() {
       const attemptsData = await attemptsResponse.json();
       const allAttempts = attemptsData.attempts || [];
       
-      // Sort attempts by most recent first
-      const sortedAttempts = allAttempts.sort((a, b) => 
-        new Date(b.endTime || b.createdAt) - new Date(a.endTime || a.createdAt)
-      );
+      console.log('Fetched attempts:', allAttempts.length);
+      console.log('Latest attempt:', allAttempts[0]);
+      
+      // Sort attempts by most recent first (endTime, then createdAt, then _id)
+      const sortedAttempts = allAttempts.sort((a, b) => {
+        const dateA = new Date(b.endTime || b.createdAt || b._id);
+        const dateB = new Date(a.endTime || a.createdAt || a._id);
+        return dateA - dateB;
+      });
       
       setAttempts(sortedAttempts);
       setLastRefresh(new Date());
@@ -91,9 +99,18 @@ export default function TestResultsPage() {
       return;
     }
 
-    // Only fetch data once on component mount
+    // Fetch data on component mount
     fetchData();
-  }, [isLoaded, user, router, fetchData]);
+
+    // Set up periodic refresh every 60 seconds (silent refresh)
+    const interval = setInterval(() => {
+      if (!loading && !refreshing) {
+        fetchData(true);
+      }
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(interval);
+  }, [isLoaded, user, router, fetchData, loading, refreshing]);
 
   const handleManualRefresh = async () => {
     await fetchData();

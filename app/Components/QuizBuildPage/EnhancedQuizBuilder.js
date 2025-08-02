@@ -142,6 +142,11 @@ export default function EnhancedQuizBuilder() {
         // Show success message with quiz details
         toast.success(`Quiz "${result.quizTitle}" created with ${result.totalQuestions} questions!`);
         
+        // Redirect to manage-quizzes page after successful upload
+        setTimeout(() => {
+          window.location.href = '/manage-quizzes';
+        }, 2000);
+        
       } else {
         toast.error(result.error || 'Upload failed', { id: loadingToast });
         
