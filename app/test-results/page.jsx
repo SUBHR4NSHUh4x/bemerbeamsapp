@@ -69,11 +69,13 @@ export default function TestResultsPage() {
       setAttempts(sortedAttempts);
       setLastRefresh(new Date());
       
+      // Only show success toast on manual refresh, not on silent refresh
       if (!silent) {
         toast.success(`Loaded ${sortedAttempts.length} test results`);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
+      // Only show error toast on manual refresh, not on silent refresh
       if (!silent) {
         toast.error(`Failed to load test results: ${error.message}`);
       }
@@ -89,16 +91,9 @@ export default function TestResultsPage() {
       return;
     }
 
+    // Only fetch data once on component mount
     fetchData();
-
-    const interval = setInterval(() => {
-      if (!loading) {
-        fetchData(true);
-      }
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [isLoaded, user, router, fetchData, loading]);
+  }, [isLoaded, user, router, fetchData]);
 
   const handleManualRefresh = async () => {
     await fetchData();
@@ -204,6 +199,7 @@ export default function TestResultsPage() {
           updatedAt: new Date().toISOString()
         } : null);
         
+        // Refresh data silently after update
         await fetchData(true);
       } else {
         const errorData = await response.json();
@@ -216,7 +212,10 @@ export default function TestResultsPage() {
   };
 
   const exportCSV = () => {
-    if (!attempts.length) return;
+    if (!attempts.length) {
+      toast.error('No data to export');
+      return;
+    }
     
     const header = [
       'Employee Name',
@@ -255,6 +254,8 @@ export default function TestResultsPage() {
     a.download = `test-results-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+    
+    toast.success('CSV exported successfully');
   };
 
   if (!isLoaded || !user) {
