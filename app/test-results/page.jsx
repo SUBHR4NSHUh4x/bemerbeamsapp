@@ -41,7 +41,7 @@ export default function TestResultsPage() {
     }, 15000); // 15 seconds for faster updates
 
     return () => clearInterval(interval);
-  }, [isLoaded, user, router]);
+  }, [isLoaded, user, router, fetchData, loading]);
 
   const fetchData = useCallback(async (silent = false) => {
     try {
@@ -58,10 +58,16 @@ export default function TestResultsPage() {
       const quizzesResponse = await fetch(`/api/quizzes?t=${timestamp}`, {
         cache: 'no-store',
         headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
       });
+      
+      if (!quizzesResponse.ok) {
+        throw new Error(`Failed to fetch quizzes: ${quizzesResponse.status}`);
+      }
+      
       const quizzesData = await quizzesResponse.json();
       console.log('Quizzes data:', quizzesData);
       setQuizzes(quizzesData.quizzes || []);
@@ -70,10 +76,16 @@ export default function TestResultsPage() {
       const attemptsResponse = await fetch(`/api/quiz-attempts/all?t=${timestamp}`, {
         cache: 'no-store',
         headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
       });
+      
+      if (!attemptsResponse.ok) {
+        throw new Error(`Failed to fetch attempts: ${attemptsResponse.status}`);
+      }
+      
       const attemptsData = await attemptsResponse.json();
       console.log('Attempts data:', attemptsData);
       console.log('Number of attempts found:', attemptsData.attempts?.length || 0);
@@ -85,16 +97,21 @@ export default function TestResultsPage() {
       console.log('Attempts with quizId:', allAttempts.filter(a => a.quizId).length);
       console.log('Attempts without quizId:', allAttempts.filter(a => !a.quizId).length);
       
-      setAttempts(allAttempts);
+      // Sort attempts by most recent first
+      const sortedAttempts = allAttempts.sort((a, b) => 
+        new Date(b.endTime || b.createdAt) - new Date(a.endTime || a.createdAt)
+      );
+      
+      setAttempts(sortedAttempts);
       setLastRefresh(new Date());
       
       if (!silent) {
-        toast.success(`Loaded ${allAttempts.length} test results`);
+        toast.success(`Loaded ${sortedAttempts.length} test results`);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
       if (!silent) {
-        toast.error('Failed to load test results');
+        toast.error(`Failed to load test results: ${error.message}`);
       }
     } finally {
       setLoading(false);
@@ -204,19 +221,32 @@ export default function TestResultsPage() {
         toast.success('Results updated successfully');
         setShowEditModal(false);
         
-        // Update the local state immediately
+        // Update the local state immediately with the new data
         setAttempts(prevAttempts => 
           prevAttempts.map(attempt => 
             attempt._id === selectedAttempt._id 
-              ? { ...attempt, answers: editedAnswers, score: newScore, passed }
+              ? { 
+                  ...attempt, 
+                  answers: editedAnswers, 
+                  score: newScore, 
+                  passed,
+                  updatedAt: new Date().toISOString()
+                }
               : attempt
           )
         );
         
-        // Also refresh data from server to ensure consistency
-        setTimeout(() => {
-          fetchData(true);
-        }, 500);
+        // Update the selected attempt for the modal
+        setSelectedAttempt(prev => prev ? {
+          ...prev,
+          answers: editedAnswers,
+          score: newScore,
+          passed,
+          updatedAt: new Date().toISOString()
+        } : null);
+        
+        // Force a refresh to get the latest data
+        await fetchData(true);
       } else {
         const errorData = await response.json();
         toast.error(errorData.error || 'Failed to update results');
@@ -307,27 +337,42 @@ export default function TestResultsPage() {
               )}
             </div>
             
-            <div className="flex items-center space-x-4">
-              {/* Refresh Status */}
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                {lastRefresh && (
-                  <span>Last updated: {lastRefresh.toLocaleTimeString()}</span>
-                )}
-                {refreshing && (
-                  <div className="flex items-center space-x-1">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-500"></div>
-                    <span>Refreshing...</span>
-                  </div>
-                )}
-              </div>
-              
-              <button
-                onClick={handleManualRefresh}
-                disabled={refreshing}
-                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {refreshing ? 'Refreshing...' : '🔄 Refresh'}
-              </button>
+                         <div className="flex items-center space-x-4">
+               {/* Refresh Status */}
+               <div className="flex items-center space-x-2 text-sm text-gray-600">
+                 {lastRefresh && (
+                   <span>Last updated: {lastRefresh.toLocaleTimeString()}</span>
+                 )}
+                 {refreshing && (
+                   <div className="flex items-center space-x-1">
+                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-500"></div>
+                     <span>Refreshing...</span>
+                   </div>
+                 )}
+                 {!refreshing && lastRefresh && (
+                   <div className="flex items-center space-x-1 text-green-600">
+                     <span>✓ Live</span>
+                   </div>
+                 )}
+               </div>
+               
+               <button
+                 onClick={handleManualRefresh}
+                 disabled={refreshing}
+                 className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+               >
+                 {refreshing ? (
+                   <>
+                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                     <span>Refreshing...</span>
+                   </>
+                 ) : (
+                   <>
+                     <span>🔄</span>
+                     <span>Refresh</span>
+                   </>
+                 )}
+               </button>
               
               <button
                 onClick={exportCSV}
@@ -362,45 +407,71 @@ export default function TestResultsPage() {
               <p className="text-gray-600">Click on any quiz to view detailed responses from all users</p>
             </div>
 
-            {/* Quiz Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Object.values(attemptsByQuiz).map((quiz) => (
-                <div key={quiz.quizId} className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
-                  <div className="flex justify-between items-start mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">{quiz.quizTitle}</h3>
-                    <span className="text-sm text-gray-500">ID: {quiz.quizId}</span>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Total Attempts:</span>
-                      <span className="font-semibold">{quiz.totalAttempts}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Average Score:</span>
-                      <span className="font-semibold">{quiz.averageScore}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Passed:</span>
-                      <span className="font-semibold text-green-600">{quiz.passedCount}/{quiz.totalAttempts}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Pass Rate:</span>
-                      <span className="font-semibold">
-                        {quiz.totalAttempts > 0 ? Math.round((quiz.passedCount / quiz.totalAttempts) * 100) : 0}%
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <button
-                    onClick={() => handleViewQuizDetails(quiz.quizId, quiz.quizTitle)}
-                    className="w-full mt-4 bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors"
-                  >
-                    View All Responses ({quiz.totalAttempts})
-                  </button>
-                </div>
-              ))}
-            </div>
+                         {/* Quiz Cards */}
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+               {Object.values(attemptsByQuiz).map((quiz) => {
+                 // Check if there are recent attempts (within last 5 minutes)
+                 const recentAttempts = quiz.attempts.filter(attempt => {
+                   const attemptTime = new Date(attempt.endTime || attempt.createdAt);
+                   const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+                   return attemptTime > fiveMinutesAgo;
+                 });
+                 
+                 const hasRecentAttempts = recentAttempts.length > 0;
+                 const latestAttempt = quiz.attempts[0]; // Already sorted by most recent
+                 
+                 return (
+                   <div key={quiz.quizId} className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow relative">
+                     {hasRecentAttempts && (
+                       <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
+                         NEW
+                       </div>
+                     )}
+                     
+                     <div className="flex justify-between items-start mb-4">
+                       <h3 className="text-lg font-semibold text-gray-900">{quiz.quizTitle}</h3>
+                       <span className="text-sm text-gray-500">ID: {quiz.quizId}</span>
+                     </div>
+                     
+                     <div className="space-y-3">
+                       <div className="flex justify-between">
+                         <span className="text-gray-600">Total Attempts:</span>
+                         <span className="font-semibold">{quiz.totalAttempts}</span>
+                       </div>
+                       <div className="flex justify-between">
+                         <span className="text-gray-600">Average Score:</span>
+                         <span className="font-semibold">{quiz.averageScore}%</span>
+                       </div>
+                       <div className="flex justify-between">
+                         <span className="text-gray-600">Passed:</span>
+                         <span className="font-semibold text-green-600">{quiz.passedCount}/{quiz.totalAttempts}</span>
+                       </div>
+                       <div className="flex justify-between">
+                         <span className="text-gray-600">Pass Rate:</span>
+                         <span className="font-semibold">
+                           {quiz.totalAttempts > 0 ? Math.round((quiz.passedCount / quiz.totalAttempts) * 100) : 0}%
+                         </span>
+                       </div>
+                       {latestAttempt && (
+                         <div className="flex justify-between">
+                           <span className="text-gray-600">Latest:</span>
+                           <span className="text-sm text-gray-500">
+                             {new Date(latestAttempt.endTime || latestAttempt.createdAt).toLocaleString()}
+                           </span>
+                         </div>
+                       )}
+                     </div>
+                     
+                     <button
+                       onClick={() => handleViewQuizDetails(quiz.quizId, quiz.quizTitle)}
+                       className="w-full mt-4 bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors"
+                     >
+                       View All Responses ({quiz.totalAttempts})
+                     </button>
+                   </div>
+                 );
+               })}
+             </div>
 
             {/* Summary Stats */}
             <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
