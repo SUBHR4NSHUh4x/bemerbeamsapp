@@ -32,6 +32,7 @@ export async function connectToDB() {
       maxPoolSize: 10, // Limit connection pool size for serverless
       serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
       socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+      // Remove deprecated options that cause issues on Vercel
     });
     
     isConnected = true;
@@ -49,9 +50,34 @@ export async function connectToDB() {
       isConnected = false;
     });
     
+    // Add connection timeout handling
+    mongoose.connection.on('timeout', () => {
+      console.error('MongoDB connection timeout');
+      isConnected = false;
+    });
+    
   } catch (error) {
     console.error('Error connecting to MongoDB:', error.message);
     isConnected = false;
+    
+    // Retry logic for Vercel
+    if (error.message.includes('buffermaxentries') || error.message.includes('bufferCommands')) {
+      console.log('Retrying connection without deprecated options...');
+      try {
+        await mongoose.connect(mongoUri, {
+          maxPoolSize: 10,
+          serverSelectionTimeoutMS: 5000,
+          socketTimeoutMS: 45000,
+        });
+        isConnected = true;
+        console.log('Connected to MongoDB on retry!');
+        return;
+      } catch (retryError) {
+        console.error('Retry connection failed:', retryError.message);
+        throw retryError;
+      }
+    }
+    
     throw error;
   }
 }

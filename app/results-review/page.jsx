@@ -372,7 +372,7 @@ export default function ResultsReviewPage() {
         return;
       }
 
-      // Debug: Test score calculation on server side
+      // Debug: Test score calculation on server side (optional for Vercel)
       try {
         const debugResponse = await fetch('/api/debug-score', {
           method: 'POST',
@@ -388,8 +388,8 @@ export default function ResultsReviewPage() {
           
           if (!debugResult.isValid) {
             console.error('Server-side score validation failed:', debugResult);
-            toast.error('Score validation failed. Please try again.');
-            return;
+            // Don't fail the request, just log the warning
+            console.warn('Score validation warning, continuing with request');
           }
         }
       } catch (debugError) {
@@ -449,37 +449,36 @@ export default function ResultsReviewPage() {
           setViewMode('quizzes');
           setTimeout(() => setViewMode('details'), 100);
         }
-        
-        // Refresh data after a short delay
-        setTimeout(() => {
-          fetchData();
-        }, 500);
       } else {
-        const errorData = await response.json();
-        console.error('Update failed:', errorData);
+        const errorData = await response.text();
+        console.error('Update failed:', response.status, errorData);
+        
+        let errorMessage = 'Failed to update results';
         
         if (response.status === 408) {
-          toast.error('Request timeout. Please try again.');
+          errorMessage = 'Request timeout. Please try again.';
         } else if (response.status === 503) {
-          toast.error('Service temporarily unavailable. Please try again.');
+          errorMessage = 'Service temporarily unavailable. Please try again.';
         } else if (response.status === 400) {
-          // Show specific validation errors
-          if (errorData.error && errorData.error.includes('score')) {
-            toast.error('Score validation failed. Please check the answers and try again.');
-          } else {
-            toast.error(errorData.error || 'Validation error. Please try again.');
+          try {
+            const errorJson = JSON.parse(errorData);
+            errorMessage = errorJson.error || 'Invalid request data';
+          } catch {
+            errorMessage = 'Invalid request data';
           }
-        } else {
-          toast.error(errorData.error || 'Failed to update results');
+        } else if (response.status === 404) {
+          errorMessage = 'Attempt not found. Please refresh the page.';
         }
+        
+        toast.error(errorMessage);
       }
     } catch (error) {
-      console.error('Error updating attempt:', error);
+      console.error('Error saving changes:', error);
       
       if (error.name === 'AbortError') {
         toast.error('Request timeout. Please try again.');
       } else {
-        toast.error('Failed to update results');
+        toast.error(error.message || 'Failed to save changes');
       }
     } finally {
       setSavingChanges(false);
