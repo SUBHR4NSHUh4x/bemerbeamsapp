@@ -44,7 +44,11 @@ export default function ResultsReviewPage() {
       const allAttempts = attemptsData.attempts || [];
       
       console.log('Fetched attempts:', allAttempts);
-      console.log('Sample attempt structure:', allAttempts[0]);
+      if (allAttempts.length > 0) {
+        console.log('Sample attempt structure:', allAttempts[0]);
+        console.log('Sample attempt answers:', allAttempts[0].answers);
+        console.log('Sample attempt answers length:', allAttempts[0].answers?.length);
+      }
       
       // Sort attempts by most recent first
       const sortedAttempts = allAttempts.sort((a, b) => 
@@ -138,10 +142,20 @@ export default function ResultsReviewPage() {
 
   const handleEditAttempt = (attempt) => {
     console.log('Opening edit modal for attempt:', attempt);
+    console.log('Attempt _id:', attempt._id);
     console.log('Attempt answers:', attempt.answers);
+    console.log('Attempt answers type:', typeof attempt.answers);
+    console.log('Attempt answers length:', attempt.answers?.length);
     
     if (!attempt.answers || attempt.answers.length === 0) {
       toast.error('No answers found for this attempt');
+      return;
+    }
+    
+    // Check if answers is an array
+    if (!Array.isArray(attempt.answers)) {
+      console.error('Answers is not an array:', attempt.answers);
+      toast.error('Invalid answer format');
       return;
     }
     
@@ -271,44 +285,6 @@ export default function ResultsReviewPage() {
             </div>
             
             <div className="flex items-center space-x-4">
-              <button
-                onClick={() => {
-                  console.log('Test modal button clicked');
-                  setShowEditModal(true);
-                  setSelectedAttempt({
-                    _id: 'test',
-                    userName: 'Test User',
-                    quizId: { quizTitle: 'Test Quiz' },
-                    endTime: new Date(),
-                    storeName: 'Test Store',
-                    userEmail: 'test@test.com',
-                    score: 80,
-                    passed: true,
-                    duration: 300,
-                    answers: [
-                      {
-                        questionText: 'Test Question',
-                        studentAnswer: 'Test Answer',
-                        correctAnswer: 'Correct Answer',
-                        points: 1,
-                        isCorrect: true
-                      }
-                    ]
-                  });
-                  setEditedAnswers([
-                    {
-                      questionText: 'Test Question',
-                      studentAnswer: 'Test Answer',
-                      correctAnswer: 'Correct Answer',
-                      points: 1,
-                      isCorrect: true
-                    }
-                  ]);
-                }}
-                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
-              >
-                Test Modal
-              </button>
               <button
                 onClick={() => router.push('/admin')}
                 className="bg-yellow-500 text-black px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors"

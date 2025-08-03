@@ -25,9 +25,22 @@ export async function GET(request) {
         quizTitle: attempt.quizId?.quizTitle || 'No quiz title',
         hasQuizData: !!attempt.quizId,
         endTime: attempt.endTime,
-        createdAt: attempt.createdAt
+        createdAt: attempt.createdAt,
+        answersCount: attempt.answers?.length || 0,
+        hasAnswers: !!attempt.answers && attempt.answers.length > 0
       });
     });
+    
+    // Log a sample attempt with answers
+    if (attempts.length > 0) {
+      const sampleAttempt = attempts[0];
+      console.log('Sample attempt with answers:', {
+        _id: sampleAttempt._id,
+        userName: sampleAttempt.userName,
+        answers: sampleAttempt.answers,
+        answersLength: sampleAttempt.answers?.length
+      });
+    }
     
     // Set cache control headers to prevent caching
     const response = NextResponse.json({ attempts });
