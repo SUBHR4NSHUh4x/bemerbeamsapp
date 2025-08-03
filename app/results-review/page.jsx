@@ -315,9 +315,29 @@ export default function ResultsReviewPage() {
       console.log('Saving changes for attempt:', selectedAttempt._id);
       console.log('Edited answers:', editedAnswers);
       
-      // Calculate new score with proper validation
-      const totalPoints = editedAnswers.reduce((sum, answer) => sum + (answer.points || 0), 0);
-      const earnedPoints = editedAnswers.reduce((sum, answer) => sum + (answer.isCorrect ? (answer.points || 0) : 0), 0);
+      // Validate editedAnswers exists and is an array
+      if (!editedAnswers || !Array.isArray(editedAnswers) || editedAnswers.length === 0) {
+        toast.error('No answers to save. Please try again.');
+        return;
+      }
+      
+      // Calculate new score with proper validation and debugging
+      let totalPoints = 0;
+      let earnedPoints = 0;
+      
+      editedAnswers.forEach((answer, index) => {
+        const points = Number(answer.points) || 0;
+        const isCorrect = Boolean(answer.isCorrect);
+        
+        console.log(`Answer ${index + 1}:`, { points, isCorrect, studentAnswer: answer.studentAnswer });
+        
+        totalPoints += points;
+        if (isCorrect) {
+          earnedPoints += points;
+        }
+      });
+      
+      console.log('Raw calculation:', { totalPoints, earnedPoints });
       
       // Ensure we don't divide by zero and handle edge cases
       let newScore = 0;
@@ -326,12 +346,25 @@ export default function ResultsReviewPage() {
       }
       
       // Ensure score is a valid number between 0 and 100
-      newScore = Math.max(0, Math.min(100, newScore || 0));
+      newScore = Math.max(0, Math.min(100, newScore));
+      
+      // Additional validation
+      if (isNaN(newScore) || !isFinite(newScore)) {
+        console.error('Invalid score calculated:', newScore);
+        toast.error('Invalid score calculation. Please try again.');
+        return;
+      }
       
       const passed = newScore >= (selectedAttempt.quizId?.passingScore || 70);
 
-      console.log('Calculated new score:', newScore, 'passed:', passed);
-      console.log('Total points:', totalPoints, 'Earned points:', earnedPoints);
+      console.log('Final calculation:', { 
+        totalPoints, 
+        earnedPoints, 
+        newScore, 
+        passed,
+        scoreType: typeof newScore,
+        isNaN: isNaN(newScore)
+      });
 
       // Final validation before sending
       if (typeof newScore !== 'number' || isNaN(newScore)) {
@@ -339,10 +372,35 @@ export default function ResultsReviewPage() {
         return;
       }
 
+      // Debug: Test score calculation on server side
+      try {
+        const debugResponse = await fetch('/api/debug-score', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ answers: editedAnswers }),
+        });
+        
+        if (debugResponse.ok) {
+          const debugResult = await debugResponse.json();
+          console.log('Debug score calculation result:', debugResult);
+          
+          if (!debugResult.isValid) {
+            console.error('Server-side score validation failed:', debugResult);
+            toast.error('Score validation failed. Please try again.');
+            return;
+          }
+        }
+      } catch (debugError) {
+        console.error('Debug score calculation failed:', debugError);
+        // Continue with the main request even if debug fails
+      }
+
       const updatedAttempt = {
         answers: editedAnswers,
         score: newScore,
-        passed,
+        passed: Boolean(passed),
       };
 
       console.log('Sending update request with data:', updatedAttempt);
@@ -404,6 +462,13 @@ export default function ResultsReviewPage() {
           toast.error('Request timeout. Please try again.');
         } else if (response.status === 503) {
           toast.error('Service temporarily unavailable. Please try again.');
+        } else if (response.status === 400) {
+          // Show specific validation errors
+          if (errorData.error && errorData.error.includes('score')) {
+            toast.error('Score validation failed. Please check the answers and try again.');
+          } else {
+            toast.error(errorData.error || 'Validation error. Please try again.');
+          }
         } else {
           toast.error(errorData.error || 'Failed to update results');
         }

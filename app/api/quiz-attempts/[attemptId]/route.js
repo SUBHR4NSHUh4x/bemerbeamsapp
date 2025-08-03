@@ -61,16 +61,38 @@ export async function PUT(request, { params }) {
     // Validate and sanitize the update data
     let score = existingAttempt.score; // Default to existing score
     
+    console.log('Received score data:', {
+      receivedScore: data.score,
+      type: typeof data.score,
+      isNull: data.score === null,
+      isUndefined: data.score === undefined,
+      isNaN: isNaN(data.score)
+    });
+    
     if (data.score !== null && data.score !== undefined) {
       const parsedScore = Number(data.score);
+      console.log('Parsed score:', {
+        parsedScore,
+        isNaN: isNaN(parsedScore),
+        isValid: !isNaN(parsedScore) && parsedScore >= 0 && parsedScore <= 100
+      });
+      
       if (!isNaN(parsedScore) && parsedScore >= 0 && parsedScore <= 100) {
         score = parsedScore;
       } else {
-        console.error('Invalid score value:', data.score);
+        console.error('Invalid score value:', data.score, 'parsed:', parsedScore);
         return NextResponse.json({ 
           error: 'Invalid score value. Score must be a number between 0 and 100.' 
         }, { status: 400 });
       }
+    }
+    
+    // Ensure score is a valid number
+    if (typeof score !== 'number' || isNaN(score) || !isFinite(score)) {
+      console.error('Final score validation failed:', score);
+      return NextResponse.json({ 
+        error: 'Score validation failed. Please try again.' 
+      }, { status: 400 });
     }
     
     const updateData = {
@@ -81,6 +103,14 @@ export async function PUT(request, { params }) {
     };
     
     console.log('Updating with validated data:', updateData);
+    
+    // Final safety check before database update
+    if (typeof updateData.score !== 'number' || isNaN(updateData.score)) {
+      console.error('Score validation failed before database update:', updateData.score);
+      return NextResponse.json({ 
+        error: 'Score validation failed. Please try again.' 
+      }, { status: 400 });
+    }
     
     // Add timeout for update operation
     const updatePromise = QuizAttempt.findByIdAndUpdate(

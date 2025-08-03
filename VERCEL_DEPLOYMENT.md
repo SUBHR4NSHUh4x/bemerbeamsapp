@@ -79,15 +79,21 @@ After deployment, check these endpoints:
 - **Error**: "MongoDB connection string is not defined"
 - **Solution**: Check environment variables in Vercel dashboard
 
-#### 2. Timeout Errors
+#### 2. Score Validation Errors
+- **Error**: "Validation failed: score: Path `score` is required"
+- **Solution**: The app now has robust score validation and debugging
+- **Debug**: Check `/api/debug-score` endpoint for score calculation issues
+- **Check**: Verify answers have valid `points` and `isCorrect` values
+
+#### 3. Timeout Errors
 - **Error**: "Database query timeout"
 - **Solution**: The app now has optimized timeouts and retry mechanisms
 
-#### 3. API Route Errors
+#### 4. API Route Errors
 - **Error**: "Failed to fetch quiz attempts"
 - **Solution**: Check the health endpoint first: `/api/health`
 
-#### 4. CORS Issues
+#### 5. CORS Issues
 - **Error**: CORS errors in browser console
 - **Solution**: Vercel handles CORS automatically for API routes
 
@@ -98,15 +104,31 @@ After deployment, check these endpoints:
    GET https://your-domain.vercel.app/api/health
    ```
 
-2. **Check Environment Variables**:
+2. **Debug Score Calculation**:
+   ```
+   POST https://your-domain.vercel.app/api/debug-score
+   Content-Type: application/json
+   
+   {
+     "answers": [
+       {
+         "points": 10,
+         "isCorrect": true,
+         "studentAnswer": "test"
+       }
+     ]
+   }
+   ```
+
+3. **Check Environment Variables**:
    - Go to Vercel dashboard → Settings → Environment Variables
    - Verify all variables are set correctly
 
-3. **Check Function Logs**:
+4. **Check Function Logs**:
    - Go to Vercel dashboard → Functions
    - Check for any error logs
 
-4. **Test Database Connection**:
+5. **Test Database Connection**:
    - Use MongoDB Compass or similar tool
    - Test the connection string directly
 
