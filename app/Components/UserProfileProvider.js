@@ -21,13 +21,17 @@ export function UserProfileProvider({ children }) {
 
     const fetchOrCreateUserProfile = async () => {
       try {
+        console.log('Fetching user profile for:', user.id);
+        
         // First try to fetch existing profile
         const response = await fetch(`/api/user-profile?clerkUserId=${user.id}`);
         
         if (response.ok) {
           const data = await response.json();
+          console.log('Found existing profile:', data.userProfile);
           setUserProfile(data.userProfile);
         } else if (response.status === 404) {
+          console.log('Profile not found, creating new one');
           // Profile doesn't exist, create one
           const createResponse = await fetch('/api/user-profile', {
             method: 'POST',
@@ -45,17 +49,46 @@ export function UserProfileProvider({ children }) {
 
           if (createResponse.ok) {
             const data = await createResponse.json();
+            console.log('Created new profile:', data.userProfile);
             setUserProfile(data.userProfile);
+          } else {
+            console.error('Failed to create profile:', createResponse.status);
           }
+        } else {
+          console.error('Failed to fetch profile:', response.status);
+          // Set a default profile to prevent infinite loading
+          setUserProfile({
+            clerkUserId: user.id,
+            email: user.emailAddresses[0]?.emailAddress || '',
+            firstName: user.firstName || '',
+            lastName: user.lastName || '',
+            role: 'student'
+          });
         }
       } catch (error) {
         console.error('Error managing user profile:', error);
+        // Set a default profile to prevent infinite loading
+        setUserProfile({
+          clerkUserId: user.id,
+          email: user.emailAddresses[0]?.emailAddress || '',
+          firstName: user.firstName || '',
+          lastName: user.lastName || '',
+          role: 'student'
+        });
       } finally {
         setLoading(false);
       }
     };
 
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.log('UserProfileProvider timeout - setting loading to false');
+      setLoading(false);
+    }, 10000); // 10 second timeout
+
     fetchOrCreateUserProfile();
+
+    return () => clearTimeout(timeoutId);
   }, [user, isLoaded]);
 
   const updateUserProfile = async (updateData) => {

@@ -30,6 +30,9 @@ export async function PUT(request, { params }) {
     const { attemptId } = params;
     const data = await request.json();
     
+    console.log('PUT request for attemptId:', attemptId);
+    console.log('Update data:', data);
+    
     if (!attemptId) {
       return NextResponse.json({ error: 'attemptId is required' }, { status: 400 });
     }
@@ -37,25 +40,51 @@ export async function PUT(request, { params }) {
     // Validate the attempt exists
     const existingAttempt = await QuizAttempt.findById(attemptId);
     if (!existingAttempt) {
+      console.log('Attempt not found for ID:', attemptId);
       return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
     }
     
+    console.log('Found existing attempt:', {
+      _id: existingAttempt._id,
+      userName: existingAttempt.userName,
+      score: existingAttempt.score,
+      passed: existingAttempt.passed
+    });
+    
     // Update the attempt with new data
+    const updateData = {
+      answers: data.answers,
+      score: data.score,
+      passed: data.passed,
+      updatedAt: new Date()
+    };
+    
+    console.log('Updating with data:', updateData);
+    
     const updatedAttempt = await QuizAttempt.findByIdAndUpdate(
       attemptId,
-      {
-        answers: data.answers,
-        score: data.score,
-        passed: data.passed,
-        updatedAt: new Date()
-      },
-      { new: true }
+      updateData,
+      { new: true, runValidators: true }
     );
     
-    return NextResponse.json({ success: true, attempt: updatedAttempt });
+    console.log('Updated attempt:', {
+      _id: updatedAttempt._id,
+      userName: updatedAttempt.userName,
+      score: updatedAttempt.score,
+      passed: updatedAttempt.passed,
+      answersCount: updatedAttempt.answers?.length
+    });
+    
+    return NextResponse.json({ 
+      success: true, 
+      attempt: updatedAttempt,
+      message: 'Attempt updated successfully'
+    });
   } catch (error) {
     console.error('QuizAttempt API PUT error:', error);
-    return NextResponse.json({ error: 'Failed to update quiz attempt' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Failed to update quiz attempt: ' + error.message 
+    }, { status: 500 });
   }
 }
 

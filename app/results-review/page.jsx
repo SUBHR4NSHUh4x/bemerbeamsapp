@@ -27,6 +27,8 @@ export default function ResultsReviewPage() {
       setLoading(true);
       const timestamp = Date.now();
       
+      console.log('Fetching data with timestamp:', timestamp);
+      
       const attemptsResponse = await fetch(`/api/quiz-attempts/all?t=${timestamp}`, {
         cache: 'no-store',
         headers: {
@@ -48,6 +50,7 @@ export default function ResultsReviewPage() {
         console.log('Sample attempt structure:', allAttempts[0]);
         console.log('Sample attempt answers:', allAttempts[0].answers);
         console.log('Sample attempt answers length:', allAttempts[0].answers?.length);
+        console.log('Sample attempt _id type:', typeof allAttempts[0]._id);
       }
       
       // Sort attempts by most recent first
@@ -73,6 +76,16 @@ export default function ResultsReviewPage() {
     }
 
     fetchData();
+    
+    // Set up periodic refresh every 30 seconds
+    const interval = setInterval(() => {
+      if (isLoaded && user) {
+        console.log('Auto-refreshing data...');
+        fetchData();
+      }
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, [isLoaded, user, router, fetchData]);
 
   // Group attempts by quiz
@@ -159,8 +172,21 @@ export default function ResultsReviewPage() {
       return;
     }
     
+    // Ensure all required fields are present in answers
+    const validatedAnswers = attempt.answers.map((answer, index) => ({
+      questionId: answer.questionId || `question_${index}`,
+      questionText: answer.questionText || 'Question ' + (index + 1),
+      studentAnswer: answer.studentAnswer || '',
+      correctAnswer: answer.correctAnswer || '',
+      points: answer.points || 1,
+      isCorrect: answer.isCorrect || false,
+      timeSpent: answer.timeSpent || 0
+    }));
+    
+    console.log('Validated answers:', validatedAnswers);
+    
     setSelectedAttempt(attempt);
-    setEditedAnswers([...attempt.answers]);
+    setEditedAnswers(validatedAnswers);
     setShowEditModal(true);
     
     // Test if modal state is set
@@ -186,18 +212,24 @@ export default function ResultsReviewPage() {
     setSavingChanges(true);
     
     try {
+      console.log('Saving changes for attempt:', selectedAttempt._id);
+      console.log('Edited answers:', editedAnswers);
+      
       // Calculate new score
       const totalPoints = editedAnswers.reduce((sum, answer) => sum + answer.points, 0);
       const earnedPoints = editedAnswers.reduce((sum, answer) => sum + (answer.isCorrect ? answer.points : 0), 0);
       const newScore = Math.round((earnedPoints / totalPoints) * 100);
       const passed = newScore >= (selectedAttempt.quizId?.passingScore || 70);
 
+      console.log('Calculated new score:', newScore, 'passed:', passed);
+
       const updatedAttempt = {
-        ...selectedAttempt,
         answers: editedAnswers,
         score: newScore,
         passed,
       };
+
+      console.log('Sending update request with data:', updatedAttempt);
 
       const response = await fetch(`/api/quiz-attempts/${selectedAttempt._id}`, {
         method: 'PUT',
@@ -207,11 +239,16 @@ export default function ResultsReviewPage() {
         body: JSON.stringify(updatedAttempt),
       });
 
+      console.log('Response status:', response.status);
+
       if (response.ok) {
-        toast.success('Results updated successfully');
+        const responseData = await response.json();
+        console.log('Update response:', responseData);
+        
+        toast.success(`Results updated successfully! New score: ${newScore}% (${passed ? 'Passed' : 'Failed'})`);
         setShowEditModal(false);
         
-        // Update local state
+        // Update local state immediately
         setAttempts(prevAttempts => 
           prevAttempts.map(attempt => 
             attempt._id === selectedAttempt._id 
@@ -226,10 +263,19 @@ export default function ResultsReviewPage() {
           )
         );
         
-        // Refresh data
-        await fetchData();
+        // Force re-render by updating view mode
+        if (viewMode === 'details') {
+          setViewMode('quizzes');
+          setTimeout(() => setViewMode('details'), 100);
+        }
+        
+        // Refresh data after a short delay
+        setTimeout(() => {
+          fetchData();
+        }, 500);
       } else {
         const errorData = await response.json();
+        console.error('Update failed:', errorData);
         toast.error(errorData.error || 'Failed to update results');
       }
     } catch (error) {
@@ -285,6 +331,15 @@ export default function ResultsReviewPage() {
             </div>
             
             <div className="flex items-center space-x-4">
+              <button
+                onClick={fetchData}
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Refresh</span>
+              </button>
               <button
                 onClick={() => router.push('/admin')}
                 className="bg-yellow-500 text-black px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors"
@@ -517,13 +572,13 @@ export default function ResultsReviewPage() {
       </main>
 
             {/* Edit Modal */}
-      {showEditModal && selectedAttempt && (
-        (() => {
-          console.log('Rendering modal with selectedAttempt:', selectedAttempt);
-          console.log('Edited answers:', editedAnswers);
-          return true;
-        })(),
+      {showEditModal && selectedAttempt && editedAnswers && editedAnswers.length > 0 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          {(() => {
+            console.log('Rendering modal with selectedAttempt:', selectedAttempt);
+            console.log('Edited answers:', editedAnswers);
+            return null;
+          })()}
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <div className="flex justify-between items-center">
@@ -539,7 +594,12 @@ export default function ResultsReviewPage() {
                   </p>
                 </div>
                 <button
-                  onClick={() => setShowEditModal(false)}
+                  onClick={() => {
+                    console.log('Closing modal');
+                    setShowEditModal(false);
+                    setSelectedAttempt(null);
+                    setEditedAnswers([]);
+                  }}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -579,56 +639,67 @@ export default function ResultsReviewPage() {
               </div>
 
               <div className="space-y-4">
-                {editedAnswers.map((answer, index) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <h4 className="font-medium text-gray-900">
-                        Question {index + 1}
-                      </h4>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-500">
-                          Points: {answer.points}
-                        </span>
-                        <button
-                          onClick={() => handleAnswerToggle(index, !answer.isCorrect)}
-                          className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                            answer.isCorrect
-                              ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                              : 'bg-red-100 text-red-800 hover:bg-red-200'
-                          }`}
-                        >
-                          {answer.isCorrect ? '✓ Correct' : '✗ Incorrect'}
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div>
-                        <span className="text-sm font-medium text-gray-700">Question:</span>
-                        <p className="text-sm text-gray-900 mt-1">{answer.questionText}</p>
+                {editedAnswers && editedAnswers.length > 0 ? (
+                  editedAnswers.map((answer, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <h4 className="font-medium text-gray-900">
+                          Question {index + 1}
+                        </h4>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-gray-500">
+                            Points: {answer.points}
+                          </span>
+                          <button
+                            onClick={() => handleAnswerToggle(index, !answer.isCorrect)}
+                            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                              answer.isCorrect
+                                ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                : 'bg-red-100 text-red-800 hover:bg-red-200'
+                            }`}
+                          >
+                            {answer.isCorrect ? '✓ Correct' : '✗ Incorrect'}
+                          </button>
+                        </div>
                       </div>
                       
-                      <div>
-                        <span className="text-sm font-medium text-gray-700">Student Answer:</span>
-                        <p className="text-sm text-gray-900 mt-1 bg-gray-50 p-2 rounded">
-                          {answer.studentAnswer || 'No answer provided'}
-                        </p>
-                      </div>
-                      
-                      <div>
-                        <span className="text-sm font-medium text-gray-700">Correct Answer:</span>
-                        <p className="text-sm text-gray-900 mt-1 bg-green-50 p-2 rounded">
-                          {answer.correctAnswer}
-                        </p>
+                      <div className="space-y-2">
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">Question:</span>
+                          <p className="text-sm text-gray-900 mt-1">{answer.questionText}</p>
+                        </div>
+                        
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">Student Answer:</span>
+                          <p className="text-sm text-gray-900 mt-1 bg-gray-50 p-2 rounded">
+                            {answer.studentAnswer || 'No answer provided'}
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">Correct Answer:</span>
+                          <p className="text-sm text-gray-900 mt-1 bg-green-50 p-2 rounded">
+                            {answer.correctAnswer}
+                          </p>
+                        </div>
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    No answers found for this attempt
                   </div>
-                ))}
+                )}
               </div>
               
               <div className="mt-6 flex justify-end space-x-3">
                 <button
-                  onClick={() => setShowEditModal(false)}
+                  onClick={() => {
+                    console.log('Canceling modal');
+                    setShowEditModal(false);
+                    setSelectedAttempt(null);
+                    setEditedAnswers([]);
+                  }}
                   className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   Cancel
