@@ -2,6 +2,10 @@
 
 A comprehensive quiz application built with Next.js, featuring authentication, admin and student panels, and interactive quiz creation and taking capabilities.
 
+## 🚀 Deployment
+
+This application can be easily deployed on Vercel. Follow the instructions in [VERCEL_SETUP.md](./VERCEL_SETUP.md) for a step-by-step deployment guide.
+
 ## 🚀 New Features (Latest Update)
 
 ### 🔐 Enhanced Security & Access Control
