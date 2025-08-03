@@ -30,9 +30,14 @@ export async function connectToDB() {
     // Connect with optimized settings for Vercel
     await mongoose.connect(mongoUri, {
       maxPoolSize: 10, // Limit connection pool size for serverless
-      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+      serverSelectionTimeoutMS: 10000, // Increased timeout from 5s to 10s
       socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
-      // Remove deprecated options that cause issues on Vercel
+      connectTimeoutMS: 10000, // Connection timeout
+      // Vercel-specific optimizations
+      bufferCommands: false, // Disable buffering for Vercel serverless
+      autoIndex: false, // Disable autoIndex in production
+      retryWrites: true, // Enable retry writes for better reliability
+      retryReads: true, // Enable retry reads for better reliability
     });
     
     isConnected = true;

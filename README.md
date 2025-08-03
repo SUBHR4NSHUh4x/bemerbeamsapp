@@ -157,7 +157,7 @@ app/
 1. **Admin Portal** (`/admin`): Secure admin access with authentication prompt
 2. **Employee Portal** (`/employee`): Dedicated employee interface
 3. **Quick Test Access** (`/test-access`): Non-authenticated test access
-4. **Test Results** (`/test-results`): Admin-only results management
+4. **Results/Review** (`/results-review`): View and edit student responses with manual grading
 
 ### Quiz System
 - **Creation**: Admins can create quizzes with multiple question types

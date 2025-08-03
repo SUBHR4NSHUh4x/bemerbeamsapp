@@ -2,16 +2,22 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request) {
   try {
-    const data = await request.json();
+    // Parse request body with error handling
+    let requestBody;
+    try {
+      requestBody = await request.json();
+    } catch (parseError) {
+      console.error('Request body parse error:', parseError);
+      return NextResponse.json({ error: 'Invalid request body format' }, { status: 400 });
+    }
     
-    console.log('Debug score calculation request:', data);
+    console.log('Debug score calculation request:', requestBody);
     
-    // Simulate the same score calculation logic
-    const { answers } = data;
+    const { answers } = requestBody;
     
     if (!answers || !Array.isArray(answers)) {
       return NextResponse.json({ 
-        error: 'Invalid answers data',
+        error: 'Invalid answers format',
         received: answers 
       }, { status: 400 });
     }
@@ -20,7 +26,27 @@ export async function POST(request) {
     let earnedPoints = 0;
     
     answers.forEach((answer, index) => {
-      const points = Number(answer.points) || 0;
+      // Validate answer structure
+      if (typeof answer !== 'object') {
+        console.warn('Invalid answer format:', answer);
+        return; // Skip this answer
+      }
+      
+      // Parse points with validation
+      let points = 0;
+      if (answer.points !== undefined) {
+        if (typeof answer.points === 'number') {
+          points = answer.points;
+        } else if (typeof answer.points === 'string') {
+          try {
+            points = parseFloat(answer.points);
+            if (isNaN(points)) points = 0;
+          } catch (e) {
+            points = 0;
+          }
+        }
+      }
+      
       const isCorrect = Boolean(answer.isCorrect);
       
       totalPoints += points;
@@ -53,7 +79,13 @@ export async function POST(request) {
     
     console.log('Debug score calculation result:', result);
     
-    return NextResponse.json(result);
+    // Set cache control headers to prevent caching
+    const response = NextResponse.json(result);
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
+    return response;
   } catch (error) {
     console.error('Debug score calculation error:', error);
     return NextResponse.json({ 
@@ -61,4 +93,4 @@ export async function POST(request) {
       message: error.message 
     }, { status: 500 });
   }
-} 
+}

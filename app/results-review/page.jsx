@@ -35,16 +35,30 @@ export default function ResultsReviewPage() {
       
       // Add timeout for fetch request
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout (reduced from 30s)
       
-      const attemptsResponse = await fetch(`/api/quiz-attempts/all?t=${timestamp}`, {
+      // Use a more reliable fetch approach with retry logic
+      const fetchWithRetry = async (url, options, retries = 3, delay = 1000) => {
+        try {
+          const response = await fetch(url, options);
+          return response;
+        } catch (error) {
+          if (retries <= 1) throw error;
+          await new Promise(resolve => setTimeout(resolve, delay));
+          console.log(`Retrying fetch... Attempts left: ${retries-1}`);
+          return fetchWithRetry(url, options, retries - 1, delay * 1.5);
+        }
+      };
+      
+      const attemptsResponse = await fetchWithRetry(`/api/quiz-attempts/all?t=${timestamp}`, {
         cache: 'no-store',
         signal: controller.signal,
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
           'Expires': '0'
-        }
+        },
+        next: { revalidate: 0 } // Force revalidation on each request
       });
       
       clearTimeout(timeoutId);
@@ -259,34 +273,92 @@ export default function ResultsReviewPage() {
     if (!itemToDelete) return;
 
     try {
+      // Retry function for API calls
+      const fetchWithRetry = async (url, options, retries = 3, delay = 1000) => {
+        try {
+          const response = await fetch(url, options);
+          return response;
+        } catch (error) {
+          if (retries <= 1) throw error;
+          await new Promise(resolve => setTimeout(resolve, delay));
+          console.log(`Retrying delete... Attempts left: ${retries-1}`);
+          return fetchWithRetry(url, options, retries - 1, delay * 1.5);
+        }
+      };
+
+      // Add timeout for delete requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
       if (itemToDelete.type === 'quiz') {
         setDeletingQuiz(true);
-        const response = await fetch(`/api/quizzes?id=${itemToDelete.id}`, {
+        console.log('Deleting quiz with ID:', itemToDelete.id);
+        
+        const response = await fetchWithRetry(`/api/quizzes?id=${itemToDelete.id}`, {
           method: 'DELETE',
+          signal: controller.signal,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+          next: { revalidate: 0 } // Force revalidation
         });
+
+        clearTimeout(timeoutId);
 
         if (response.ok) {
           toast.success(`Quiz "${itemToDelete.title}" deleted successfully`);
+          // Update local state immediately to improve perceived performance
+          setAttempts(prevAttempts => 
+            prevAttempts.filter(attempt => 
+              attempt.quizId?._id !== itemToDelete.id && attempt.quizId !== itemToDelete.id
+            )
+          );
           await fetchData(); // Refresh data
         } else {
-          toast.error('Failed to delete quiz');
+          const errorData = await response.text();
+          console.error('Delete quiz failed:', response.status, errorData);
+          toast.error('Failed to delete quiz. Please try again.');
         }
       } else if (itemToDelete.type === 'attempt') {
         setDeletingAttempt(true);
-        const response = await fetch(`/api/quiz-attempts/${itemToDelete.id}`, {
+        console.log('Deleting attempt with ID:', itemToDelete.id);
+        
+        const response = await fetchWithRetry(`/api/quiz-attempts/${itemToDelete.id}`, {
           method: 'DELETE',
+          signal: controller.signal,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+          next: { revalidate: 0 } // Force revalidation
         });
+
+        clearTimeout(timeoutId);
 
         if (response.ok) {
           toast.success(`Attempt "${itemToDelete.title}" deleted successfully`);
+          // Update local state immediately to improve perceived performance
+          setAttempts(prevAttempts => 
+            prevAttempts.filter(attempt => attempt._id !== itemToDelete.id)
+          );
           await fetchData(); // Refresh data
         } else {
-          toast.error('Failed to delete attempt');
+          const errorData = await response.text();
+          console.error('Delete attempt failed:', response.status, errorData);
+          toast.error('Failed to delete attempt. Please try again.');
         }
       }
     } catch (error) {
       console.error('Error deleting item:', error);
-      toast.error('Failed to delete item');
+      
+      if (error.name === 'AbortError') {
+        toast.error('Request timeout. Please try again.');
+      } else {
+        toast.error(error.message || 'Failed to delete item');
+      }
     } finally {
       setDeletingQuiz(false);
       setDeletingAttempt(false);
@@ -318,6 +390,7 @@ export default function ResultsReviewPage() {
       // Validate editedAnswers exists and is an array
       if (!editedAnswers || !Array.isArray(editedAnswers) || editedAnswers.length === 0) {
         toast.error('No answers to save. Please try again.');
+        setSavingChanges(false);
         return;
       }
       
@@ -352,6 +425,7 @@ export default function ResultsReviewPage() {
       if (isNaN(newScore) || !isFinite(newScore)) {
         console.error('Invalid score calculated:', newScore);
         toast.error('Invalid score calculation. Please try again.');
+        setSavingChanges(false);
         return;
       }
       
@@ -369,6 +443,7 @@ export default function ResultsReviewPage() {
       // Final validation before sending
       if (typeof newScore !== 'number' || isNaN(newScore)) {
         toast.error('Invalid score calculation. Please try again.');
+        setSavingChanges(false);
         return;
       }
 
@@ -380,6 +455,7 @@ export default function ResultsReviewPage() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ answers: editedAnswers }),
+          cache: 'no-store'
         });
         
         if (debugResponse.ok) {
@@ -405,17 +481,34 @@ export default function ResultsReviewPage() {
 
       console.log('Sending update request with data:', updatedAttempt);
 
-      // Add timeout for update request
+      // Add timeout for update request with retry logic
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout (reduced from 30s)
 
-      const response = await fetch(`/api/quiz-attempts/${selectedAttempt._id}`, {
+      // Retry function for API calls
+      const fetchWithRetry = async (url, options, retries = 3, delay = 1000) => {
+        try {
+          const response = await fetch(url, options);
+          return response;
+        } catch (error) {
+          if (retries <= 1) throw error;
+          await new Promise(resolve => setTimeout(resolve, delay));
+          console.log(`Retrying update... Attempts left: ${retries-1}`);
+          return fetchWithRetry(url, options, retries - 1, delay * 1.5);
+        }
+      };
+
+      const response = await fetchWithRetry(`/api/quiz-attempts/${selectedAttempt._id}`, {
         method: 'PUT',
         signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         },
         body: JSON.stringify(updatedAttempt),
+        next: { revalidate: 0 } // Force revalidation
       });
 
       clearTimeout(timeoutId);
@@ -444,10 +537,16 @@ export default function ResultsReviewPage() {
           )
         );
         
-        // Force re-render by updating view mode
+        // Force re-render by updating view mode and refresh data
         if (viewMode === 'details') {
           setViewMode('quizzes');
-          setTimeout(() => setViewMode('details'), 100);
+          setTimeout(() => {
+            setViewMode('details');
+            fetchData(); // Refresh data after successful update
+          }, 100);
+        } else {
+          // Refresh data if not in details view
+          fetchData();
         }
       } else {
         const errorData = await response.text();

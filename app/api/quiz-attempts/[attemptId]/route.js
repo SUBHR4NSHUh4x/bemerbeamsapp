@@ -28,23 +28,40 @@ export async function PUT(request, { params }) {
   try {
     await connectToDB();
     const { attemptId } = params;
-    const data = await request.json();
+    
+    if (!attemptId) {
+      return NextResponse.json({ error: 'Attempt ID is required' }, { status: 400 });
+    }
+    
+    // Parse the request body with error handling
+    let data;
+    try {
+      data = await request.json();
+    } catch (parseError) {
+      console.error('Request body parse error:', parseError);
+      return NextResponse.json({ error: 'Invalid request body format' }, { status: 400 });
+    }
     
     console.log('PUT request for attemptId:', attemptId);
     console.log('Update data:', data);
     
-    if (!attemptId) {
-      return NextResponse.json({ error: 'attemptId is required' }, { status: 400 });
-    }
-    
-    // Add timeout for database operations
+    // Increase timeout for the database operation
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Database operation timeout')), 15000)
+      setTimeout(() => reject(new Error('Database operation timeout')), 25000) // Increased from 15s to 25s
     );
     
     // Validate the attempt exists
-    const findPromise = QuizAttempt.findById(attemptId);
-    const existingAttempt = await Promise.race([findPromise, timeoutPromise]);
+    let existingAttempt;
+    try {
+      const findPromise = QuizAttempt.findById(attemptId).lean();
+      existingAttempt = await Promise.race([findPromise, timeoutPromise]);
+    } catch (findError) {
+      console.error('Find attempt error:', findError);
+      if (findError.message.includes('timeout')) {
+        return NextResponse.json({ error: 'Database query timeout. Please try again.' }, { status: 408 });
+      }
+      throw findError;
+    }
     
     if (!existingAttempt) {
       console.log('Attempt not found for ID:', attemptId);
@@ -105,18 +122,31 @@ export async function PUT(request, { params }) {
     
     console.log('Updating with validated data:', updateData);
     
-    // Add timeout for update operation
-    const updatePromise = QuizAttempt.findByIdAndUpdate(
-      attemptId,
-      updateData,
-      { 
-        new: true, 
-        runValidators: false, // Disable validators to avoid Vercel issues
-        upsert: false 
+    // Add timeout for update operation with error handling
+    let updatedAttempt;
+    try {
+      const updatePromise = QuizAttempt.findByIdAndUpdate(
+        attemptId,
+        updateData,
+        { 
+          new: true, 
+          runValidators: false, // Disable validators to avoid Vercel issues
+          upsert: false 
+        }
+      );
+      
+      updatedAttempt = await Promise.race([updatePromise, timeoutPromise]);
+    } catch (updateError) {
+      console.error('Update attempt error:', updateError);
+      if (updateError.message.includes('timeout')) {
+        return NextResponse.json({ error: 'Database update timeout. Please try again.' }, { status: 408 });
       }
-    );
+      throw updateError;
+    }
     
-    const updatedAttempt = await Promise.race([updatePromise, timeoutPromise]);
+    if (!updatedAttempt) {
+      return NextResponse.json({ error: 'Failed to update quiz attempt' }, { status: 500 });
+    }
     
     console.log('Updated attempt:', {
       _id: updatedAttempt._id,
@@ -126,11 +156,21 @@ export async function PUT(request, { params }) {
       answersCount: updatedAttempt.answers?.length
     });
     
-    return NextResponse.json({ 
+    // Set cache control headers to prevent caching
+    const response = NextResponse.json({ 
       success: true, 
-      attempt: updatedAttempt,
+      attempt: {
+        ...updatedAttempt.toObject(),
+        _id: updatedAttempt._id.toString()
+      },
       message: 'Attempt updated successfully'
     });
+    
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
+    return response;
   } catch (error) {
     console.error('QuizAttempt API PUT error:', error);
     
@@ -139,6 +179,10 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ 
         error: 'Database operation timeout. Please try again.' 
       }, { status: 408 });
+    } else if (error.name === 'MongooseError' || error.name === 'MongoError') {
+      return NextResponse.json({ 
+        error: 'Database error. Please try again.' 
+      }, { status: 503 });
     } else if (error.message.includes('MongoDB') || error.message.includes('connection')) {
       return NextResponse.json({ 
         error: 'Database connection error. Please try again.' 
@@ -146,6 +190,10 @@ export async function PUT(request, { params }) {
     } else if (error.name === 'ValidationError') {
       return NextResponse.json({ 
         error: 'Validation error: ' + error.message 
+      }, { status: 400 });
+    } else if (error.name === 'CastError') {
+      return NextResponse.json({ 
+        error: 'Invalid ID format' 
       }, { status: 400 });
     }
     
@@ -156,22 +204,61 @@ export async function PUT(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  await connectToDB();
   try {
+    await connectToDB();
     const { attemptId } = params;
     
     if (!attemptId) {
-      return NextResponse.json({ error: 'attemptId is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Attempt ID is required' }, { status: 400 });
     }
     
-    const deletedAttempt = await QuizAttempt.findByIdAndDelete(attemptId);
+    // Add timeout for the database operation
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database operation timeout')), 20000)
+    );
+    
+    // Delete the attempt with error handling
+    let deletedAttempt;
+    try {
+      const deletePromise = QuizAttempt.findByIdAndDelete(attemptId);
+      deletedAttempt = await Promise.race([deletePromise, timeoutPromise]);
+    } catch (deleteError) {
+      console.error('Delete attempt error:', deleteError);
+      if (deleteError.message.includes('timeout')) {
+        return NextResponse.json({ error: 'Database delete timeout. Please try again.' }, { status: 408 });
+      }
+      throw deleteError;
+    }
+    
     if (!deletedAttempt) {
-      return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Quiz attempt not found' }, { status: 404 });
     }
     
-    return NextResponse.json({ success: true, message: 'Attempt deleted successfully' });
+    console.log('Deleted attempt:', {
+      _id: deletedAttempt._id,
+      userName: deletedAttempt.userName
+    });
+    
+    // Set cache control headers to prevent caching
+    const response = NextResponse.json({ success: true, message: 'Attempt deleted successfully' });
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
+    return response;
   } catch (error) {
     console.error('QuizAttempt API DELETE error:', error);
-    return NextResponse.json({ error: 'Failed to delete quiz attempt' }, { status: 500 });
+    
+    if (error.message.includes('timeout')) {
+      return NextResponse.json({ error: 'Database operation timeout. Please try again.' }, { status: 408 });
+    } else if (error.name === 'MongooseError' || error.name === 'MongoError') {
+      return NextResponse.json({ error: 'Database error. Please try again.' }, { status: 503 });
+    } else if (error.message.includes('MongoDB') || error.message.includes('connection')) {
+      return NextResponse.json({ error: 'Database connection error. Please try again.' }, { status: 503 });
+    } else if (error.name === 'CastError') {
+      return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
+    }
+    
+    return NextResponse.json({ error: 'Failed to delete quiz attempt: ' + error.message }, { status: 500 });
   }
-} 
+}
