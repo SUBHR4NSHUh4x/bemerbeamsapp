@@ -9,16 +9,19 @@ import toast, { Toaster } from 'react-hot-toast';
 export default function ResultsReviewPage() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
+  
+  // State management
   const [attempts, setAttempts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedAttempt, setSelectedAttempt] = useState(null);
   const [editedAnswers, setEditedAnswers] = useState([]);
   const [savingChanges, setSavingChanges] = useState(false);
-  const [viewMode, setViewMode] = useState('quizzes');
+  const [viewMode, setViewMode] = useState('quizzes'); // 'quizzes' or 'details'
   const [selectedQuizForDetails, setSelectedQuizForDetails] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Data fetching function
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -40,6 +43,7 @@ export default function ResultsReviewPage() {
       const attemptsData = await attemptsResponse.json();
       const allAttempts = attemptsData.attempts || [];
       
+      // Sort attempts by most recent first
       const sortedAttempts = allAttempts.sort((a, b) => 
         new Date(b.endTime || b.createdAt) - new Date(a.endTime || a.createdAt)
       );
@@ -48,11 +52,13 @@ export default function ResultsReviewPage() {
       
     } catch (error) {
       console.error('Error fetching data:', error);
+      toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // Initialize data on component mount
   useEffect(() => {
     if (isLoaded && !user) {
       router.push('/sign-in');
@@ -62,6 +68,7 @@ export default function ResultsReviewPage() {
     fetchData();
   }, [isLoaded, user, router, fetchData]);
 
+  // Group attempts by quiz
   const attemptsByQuiz = useMemo(() => {
     const grouped = {};
     
@@ -88,6 +95,7 @@ export default function ResultsReviewPage() {
       }
     });
     
+    // Calculate averages
     Object.values(grouped).forEach(quiz => {
       if (quiz.totalAttempts > 0) {
         const totalScore = quiz.attempts.reduce((sum, attempt) => sum + attempt.score, 0);
@@ -98,22 +106,40 @@ export default function ResultsReviewPage() {
     return grouped;
   }, [attempts]);
 
+  // Filter attempts based on search
+  const filteredAttempts = useMemo(() => {
+    let filtered = attempts;
+    
+    if (viewMode === 'details' && selectedQuizForDetails) {
+      filtered = attemptsByQuiz[selectedQuizForDetails.quizId]?.attempts || [];
+    }
+    
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(attempt => 
+        attempt.userName.toLowerCase().includes(term) ||
+        (attempt.storeName && attempt.storeName.toLowerCase().includes(term)) ||
+        (attempt.userEmail && attempt.userEmail.toLowerCase().includes(term)) ||
+        (attempt.quizId?.quizTitle && attempt.quizId.quizTitle.toLowerCase().includes(term))
+      );
+    }
+    
+    return filtered;
+  }, [attempts, viewMode, selectedQuizForDetails, attemptsByQuiz, searchTerm]);
+
+  // Navigation handlers
+  const handleBackToQuizzes = () => {
+    setViewMode('quizzes');
+    setSelectedQuizForDetails(null);
+  };
+
   const handleEditAttempt = (attempt) => {
     setSelectedAttempt(attempt);
     setEditedAnswers([...attempt.answers]);
     setShowEditModal(true);
   };
 
-  const handleViewQuizDetails = (quizId, quizTitle) => {
-    setSelectedQuizForDetails({ quizId, quizTitle });
-    setViewMode('details');
-  };
-
-  const handleBackToQuizzes = () => {
-    setViewMode('quizzes');
-    setSelectedQuizForDetails(null);
-  };
-
+  // Manual grading handlers
   const handleAnswerToggle = (answerIndex, isCorrect) => {
     setEditedAnswers(prev => 
       prev.map((answer, index) => 
@@ -130,6 +156,7 @@ export default function ResultsReviewPage() {
     setSavingChanges(true);
     
     try {
+      // Calculate new score
       const totalPoints = editedAnswers.reduce((sum, answer) => sum + answer.points, 0);
       const earnedPoints = editedAnswers.reduce((sum, answer) => sum + (answer.isCorrect ? answer.points : 0), 0);
       const newScore = Math.round((earnedPoints / totalPoints) * 100);
@@ -154,6 +181,7 @@ export default function ResultsReviewPage() {
         toast.success('Results updated successfully');
         setShowEditModal(false);
         
+        // Update local state
         setAttempts(prevAttempts => 
           prevAttempts.map(attempt => 
             attempt._id === selectedAttempt._id 
@@ -168,6 +196,7 @@ export default function ResultsReviewPage() {
           )
         );
         
+        // Refresh data
         await fetchData();
       } else {
         const errorData = await response.json();
@@ -181,26 +210,7 @@ export default function ResultsReviewPage() {
     }
   };
 
-  const filteredAttempts = useMemo(() => {
-    let filtered = attempts;
-    
-    if (viewMode === 'details' && selectedQuizForDetails) {
-      filtered = attemptsByQuiz[selectedQuizForDetails.quizId]?.attempts || [];
-    }
-    
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(attempt => 
-        attempt.userName.toLowerCase().includes(term) ||
-        (attempt.storeName && attempt.storeName.toLowerCase().includes(term)) ||
-        (attempt.userEmail && attempt.userEmail.toLowerCase().includes(term)) ||
-        (attempt.quizId?.quizTitle && attempt.quizId.quizTitle.toLowerCase().includes(term))
-      );
-    }
-    
-    return filtered;
-  }, [attempts, viewMode, selectedQuizForDetails, attemptsByQuiz, searchTerm]);
-
+  // Loading state
   if (!isLoaded || !user) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -258,7 +268,11 @@ export default function ResultsReviewPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {viewMode === 'quizzes' ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500"></div>
+          </div>
+        ) : viewMode === 'quizzes' ? (
           // Quiz Overview Mode
           <div>
             <div className="mb-6">
@@ -298,7 +312,10 @@ export default function ResultsReviewPage() {
                   
                   <div className="mt-4">
                     <button
-                      onClick={() => handleViewQuizDetails(quiz.quizId, quiz.quizTitle)}
+                      onClick={() => {
+                        setSelectedQuizForDetails({ quizId: quiz.quizId, quizTitle: quiz.quizTitle });
+                        setViewMode('details');
+                      }}
                       className="w-full bg-indigo-500 text-white py-2 px-4 rounded-lg hover:bg-indigo-600 transition-colors"
                     >
                       Review Responses ({quiz.totalAttempts})
@@ -404,13 +421,7 @@ export default function ResultsReviewPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {loading ? (
-                      <tr>
-                        <td colSpan="9" className="px-6 py-4 text-center">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mx-auto"></div>
-                        </td>
-                      </tr>
-                    ) : filteredAttempts.length === 0 ? (
+                    {filteredAttempts.length === 0 ? (
                       <tr>
                         <td colSpan="9" className="px-6 py-4 text-center text-gray-500">
                           {searchTerm 
