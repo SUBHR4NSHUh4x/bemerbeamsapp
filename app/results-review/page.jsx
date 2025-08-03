@@ -43,6 +43,9 @@ export default function ResultsReviewPage() {
       const attemptsData = await attemptsResponse.json();
       const allAttempts = attemptsData.attempts || [];
       
+      console.log('Fetched attempts:', allAttempts);
+      console.log('Sample attempt structure:', allAttempts[0]);
+      
       // Sort attempts by most recent first
       const sortedAttempts = allAttempts.sort((a, b) => 
         new Date(b.endTime || b.createdAt) - new Date(a.endTime || a.createdAt)
@@ -134,9 +137,22 @@ export default function ResultsReviewPage() {
   };
 
   const handleEditAttempt = (attempt) => {
+    console.log('Opening edit modal for attempt:', attempt);
+    console.log('Attempt answers:', attempt.answers);
+    
+    if (!attempt.answers || attempt.answers.length === 0) {
+      toast.error('No answers found for this attempt');
+      return;
+    }
+    
     setSelectedAttempt(attempt);
     setEditedAnswers([...attempt.answers]);
     setShowEditModal(true);
+    
+    // Test if modal state is set
+    setTimeout(() => {
+      console.log('Modal state after setting:', { showEditModal, selectedAttempt: attempt });
+    }, 100);
   };
 
   // Manual grading handlers
@@ -255,6 +271,44 @@ export default function ResultsReviewPage() {
             </div>
             
             <div className="flex items-center space-x-4">
+              <button
+                onClick={() => {
+                  console.log('Test modal button clicked');
+                  setShowEditModal(true);
+                  setSelectedAttempt({
+                    _id: 'test',
+                    userName: 'Test User',
+                    quizId: { quizTitle: 'Test Quiz' },
+                    endTime: new Date(),
+                    storeName: 'Test Store',
+                    userEmail: 'test@test.com',
+                    score: 80,
+                    passed: true,
+                    duration: 300,
+                    answers: [
+                      {
+                        questionText: 'Test Question',
+                        studentAnswer: 'Test Answer',
+                        correctAnswer: 'Correct Answer',
+                        points: 1,
+                        isCorrect: true
+                      }
+                    ]
+                  });
+                  setEditedAnswers([
+                    {
+                      questionText: 'Test Question',
+                      studentAnswer: 'Test Answer',
+                      correctAnswer: 'Correct Answer',
+                      points: 1,
+                      isCorrect: true
+                    }
+                  ]);
+                }}
+                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
+              >
+                Test Modal
+              </button>
               <button
                 onClick={() => router.push('/admin')}
                 className="bg-yellow-500 text-black px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors"
@@ -486,8 +540,13 @@ export default function ResultsReviewPage() {
         )}
       </main>
 
-      {/* Edit Modal */}
+            {/* Edit Modal */}
       {showEditModal && selectedAttempt && (
+        (() => {
+          console.log('Rendering modal with selectedAttempt:', selectedAttempt);
+          console.log('Edited answers:', editedAnswers);
+          return true;
+        })(),
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
