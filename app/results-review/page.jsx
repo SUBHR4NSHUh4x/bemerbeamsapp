@@ -20,6 +20,10 @@ export default function ResultsReviewPage() {
   const [viewMode, setViewMode] = useState('quizzes'); // 'quizzes' or 'details'
   const [selectedQuizForDetails, setSelectedQuizForDetails] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [deletingQuiz, setDeletingQuiz] = useState(false);
+  const [deletingAttempt, setDeletingAttempt] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   // Data fetching function
   const fetchData = useCallback(async () => {
@@ -193,6 +197,61 @@ export default function ResultsReviewPage() {
     setTimeout(() => {
       console.log('Modal state after setting:', { showEditModal, selectedAttempt: attempt });
     }, 100);
+  };
+
+  // Delete functionality
+  const handleDeleteQuiz = (quizId, quizTitle) => {
+    setItemToDelete({ type: 'quiz', id: quizId, title: quizTitle });
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteAttempt = (attempt) => {
+    setItemToDelete({ 
+      type: 'attempt', 
+      id: attempt._id, 
+      title: `${attempt.userName} - ${attempt.quizId?.quizTitle || 'Unknown Quiz'}`
+    });
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
+
+    try {
+      if (itemToDelete.type === 'quiz') {
+        setDeletingQuiz(true);
+        const response = await fetch(`/api/quizzes?id=${itemToDelete.id}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          toast.success(`Quiz "${itemToDelete.title}" deleted successfully`);
+          await fetchData(); // Refresh data
+        } else {
+          toast.error('Failed to delete quiz');
+        }
+      } else if (itemToDelete.type === 'attempt') {
+        setDeletingAttempt(true);
+        const response = await fetch(`/api/quiz-attempts/${itemToDelete.id}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          toast.success(`Attempt "${itemToDelete.title}" deleted successfully`);
+          await fetchData(); // Refresh data
+        } else {
+          toast.error('Failed to delete attempt');
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      toast.error('Failed to delete item');
+    } finally {
+      setDeletingQuiz(false);
+      setDeletingAttempt(false);
+      setShowDeleteConfirm(false);
+      setItemToDelete(null);
+    }
   };
 
   // Manual grading handlers
@@ -395,17 +454,23 @@ export default function ResultsReviewPage() {
                     </div>
                   </div>
                   
-                  <div className="mt-4">
-                    <button
-                      onClick={() => {
-                        setSelectedQuizForDetails({ quizId: quiz.quizId, quizTitle: quiz.quizTitle });
-                        setViewMode('details');
-                      }}
-                      className="w-full bg-indigo-500 text-white py-2 px-4 rounded-lg hover:bg-indigo-600 transition-colors"
-                    >
-                      Review Responses ({quiz.totalAttempts})
-                    </button>
-                  </div>
+                                      <div className="mt-4 space-y-2">
+                      <button
+                        onClick={() => {
+                          setSelectedQuizForDetails({ quizId: quiz.quizId, quizTitle: quiz.quizTitle });
+                          setViewMode('details');
+                        }}
+                        className="w-full bg-indigo-500 text-white py-2 px-4 rounded-lg hover:bg-indigo-600 transition-colors"
+                      >
+                        Review Responses ({quiz.totalAttempts})
+                      </button>
+                      <button
+                        onClick={() => handleDeleteQuiz(quiz.quizId, quiz.quizTitle)}
+                        className="w-full bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition-colors"
+                      >
+                        Delete Quiz
+                      </button>
+                    </div>
                 </div>
               ))}
             </div>
@@ -551,14 +616,22 @@ export default function ResultsReviewPage() {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {new Date(attempt.endTime).toLocaleDateString()}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <button
-                                onClick={() => handleEditAttempt(attempt)}
-                                className="text-indigo-600 hover:text-indigo-900 bg-indigo-100 hover:bg-indigo-200 px-3 py-1 rounded-lg transition-colors"
-                              >
-                                View & Edit
-                              </button>
-                            </td>
+                                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                               <div className="flex space-x-2">
+                                 <button
+                                   onClick={() => handleEditAttempt(attempt)}
+                                   className="text-indigo-600 hover:text-indigo-900 bg-indigo-100 hover:bg-indigo-200 px-3 py-1 rounded-lg transition-colors"
+                                 >
+                                   View & Edit
+                                 </button>
+                                 <button
+                                   onClick={() => handleDeleteAttempt(attempt)}
+                                   className="text-red-600 hover:text-red-900 bg-red-100 hover:bg-red-200 px-3 py-1 rounded-lg transition-colors"
+                                 >
+                                   Delete
+                                 </button>
+                               </div>
+                             </td>
                           </tr>
                         );
                       })
@@ -718,6 +791,58 @@ export default function ResultsReviewPage() {
                     <>
                       <span>💾</span>
                       <span>Save Changes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && itemToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Confirm Delete
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete &quot;{itemToDelete.title}&quot;? This action cannot be undone.
+              </p>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setItemToDelete(null);
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  disabled={deletingQuiz || deletingAttempt}
+                  className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                >
+                  {(deletingQuiz || deletingAttempt) ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      <span>Delete</span>
                     </>
                   )}
                 </button>
