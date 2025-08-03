@@ -21,16 +21,32 @@ export default function AdminPage() {
       return;
     }
 
-    // Check if admin is already authenticated in session storage
+    // Check if admin is already authenticated in session storage with timeout
     const adminAuthenticated = sessionStorage.getItem('adminAuthenticated');
-    if (adminAuthenticated === 'true') {
-      setIsAuthenticated(true);
-      return;
+    const adminAuthTime = sessionStorage.getItem('adminAuthTime');
+    
+    if (adminAuthenticated === 'true' && adminAuthTime) {
+      const authTime = parseInt(adminAuthTime);
+      const currentTime = Date.now();
+      const sessionTimeout = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+      
+      // Check if session has expired
+      if (currentTime - authTime < sessionTimeout) {
+        setIsAuthenticated(true);
+        return;
+      } else {
+        // Session expired, clear storage
+        sessionStorage.removeItem('adminAuthenticated');
+        sessionStorage.removeItem('adminAuthTime');
+      }
     }
 
     // If userProfile is loaded and user is admin, authenticate
     if (userProfile && userProfile.role === 'admin') {
       setIsAuthenticated(true);
+      // Store admin authentication with timestamp
+      sessionStorage.setItem('adminAuthenticated', 'true');
+      sessionStorage.setItem('adminAuthTime', Date.now().toString());
     } 
     // If userProfile is loaded but user is not admin, show login prompt
     else if (userProfile && userProfile.role !== 'admin') {
@@ -49,16 +65,35 @@ export default function AdminPage() {
 
   const handleAdminLogin = async (e) => {
     e.preventDefault();
-    // In a real application, you would validate against a secure admin credentials system
-    // For demo purposes, we'll use a simple check
-    if (adminCredentials.username === 'admin' && adminCredentials.password === 'admin123') {
+    
+    // Validate credentials
+    if (!adminCredentials.username || !adminCredentials.password) {
+      alert('Please enter both username and password');
+      return;
+    }
+
+    // In a production environment, you should validate against a secure admin credentials system
+    // For now, we'll use a simple check with environment variables or hardcoded credentials
+    const validUsername = process.env.NEXT_PUBLIC_ADMIN_USERNAME || 'beamer';
+    const validPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'BemerBrands@admin';
+    
+    if (adminCredentials.username === validUsername && adminCredentials.password === validPassword) {
       setIsAuthenticated(true);
       setShowLoginPrompt(false);
-      // Store admin authentication in session storage
+      // Store admin authentication in session storage with timestamp
       sessionStorage.setItem('adminAuthenticated', 'true');
+      sessionStorage.setItem('adminAuthTime', Date.now().toString());
     } else {
-      alert('Invalid admin credentials');
+      alert('Invalid admin credentials. Please try again.');
     }
+  };
+
+  const handleLogout = () => {
+    // Clear admin authentication
+    sessionStorage.removeItem('adminAuthenticated');
+    sessionStorage.removeItem('adminAuthTime');
+    setIsAuthenticated(false);
+    setShowLoginPrompt(true);
   };
 
   // Show loading only if Clerk is still loading or user is not authenticated
@@ -133,27 +168,14 @@ export default function AdminPage() {
             </button>
           </form>
           
-          <div className="mt-4 text-center">
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              ← Back to Dashboard
-            </button>
-            <div className="mt-2">
-              <button
-                onClick={() => {
-                  console.log('Debug: Bypassing profile check');
-                  setShowLoginPrompt(false);
-                  setIsAuthenticated(true);
-                  sessionStorage.setItem('adminAuthenticated', 'true');
-                }}
-                className="text-xs text-blue-500 hover:text-blue-700"
-              >
-                Debug: Skip Profile Check
-              </button>
-            </div>
-          </div>
+                     <div className="mt-4 text-center">
+             <button
+               onClick={() => router.push('/dashboard')}
+               className="text-sm text-gray-500 hover:text-gray-700"
+             >
+               ← Back to Dashboard
+             </button>
+           </div>
         </div>
       </div>
     );
@@ -193,6 +215,12 @@ export default function AdminPage() {
                 </p>
                 <p className="text-xs text-gray-500">Administrator</p>
               </div>
+              <button
+                onClick={handleLogout}
+                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors text-sm"
+              >
+                Logout
+              </button>
             </div>
           </div>
         </div>
@@ -207,6 +235,11 @@ export default function AdminPage() {
           <p className="text-xl text-gray-600">
             Manage tests, view results, and analyze performance
           </p>
+          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-sm text-yellow-800">
+              <strong>Security Note:</strong> Admin access is restricted. Please use proper credentials to access this panel.
+            </p>
+          </div>
         </div>
 
         {/* Admin Cards */}
