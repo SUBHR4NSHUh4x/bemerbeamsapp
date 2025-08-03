@@ -3,15 +3,5 @@
     "app/api/**/*.js": {
       "maxDuration": 30
     }
-  },
-  "env": {
-    "MONGO_URL": "@mongo_url",
-    "MONGODB_URI": "@mongodb_uri"
-  },
-  "build": {
-    "env": {
-      "MONGO_URL": "@mongo_url",
-      "MONGODB_URI": "@mongodb_uri"
-    }
   }
 } 
