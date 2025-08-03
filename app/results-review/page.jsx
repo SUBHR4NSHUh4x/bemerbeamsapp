@@ -33,8 +33,13 @@ export default function ResultsReviewPage() {
       
       console.log('Fetching data with timestamp:', timestamp);
       
+      // Add timeout for fetch request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
       const attemptsResponse = await fetch(`/api/quiz-attempts/all?t=${timestamp}`, {
         cache: 'no-store',
+        signal: controller.signal,
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
@@ -42,8 +47,19 @@ export default function ResultsReviewPage() {
         }
       });
       
+      clearTimeout(timeoutId);
+      
       if (!attemptsResponse.ok) {
-        throw new Error(`Failed to fetch attempts: ${attemptsResponse.status}`);
+        const errorText = await attemptsResponse.text();
+        console.error('API Error Response:', errorText);
+        
+        if (attemptsResponse.status === 408) {
+          throw new Error('Request timeout. Please try again.');
+        } else if (attemptsResponse.status === 503) {
+          throw new Error('Service temporarily unavailable. Please try again.');
+        } else {
+          throw new Error(`Failed to fetch attempts: ${attemptsResponse.status}`);
+        }
       }
       
       const attemptsData = await attemptsResponse.json();
@@ -66,7 +82,12 @@ export default function ResultsReviewPage() {
       
     } catch (error) {
       console.error('Error fetching data:', error);
-      toast.error('Failed to load data');
+      
+      if (error.name === 'AbortError') {
+        toast.error('Request timeout. Please try again.');
+      } else {
+        toast.error(error.message || 'Failed to load data');
+      }
     } finally {
       setLoading(false);
     }
@@ -79,7 +100,27 @@ export default function ResultsReviewPage() {
       return;
     }
 
-    fetchData();
+    // Initial fetch with retry mechanism
+    const initialFetch = async () => {
+      let retries = 3;
+      while (retries > 0) {
+        try {
+          await fetchData();
+          break; // Success, exit retry loop
+        } catch (error) {
+          retries--;
+          if (retries === 0) {
+            console.error('Failed to fetch data after 3 retries');
+            toast.error('Failed to load data. Please refresh the page.');
+          } else {
+            console.log(`Retrying fetch... ${3 - retries}/3`);
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+          }
+        }
+      }
+    };
+
+    initialFetch();
     
     // Set up periodic refresh every 30 seconds
     const interval = setInterval(() => {
@@ -274,13 +315,29 @@ export default function ResultsReviewPage() {
       console.log('Saving changes for attempt:', selectedAttempt._id);
       console.log('Edited answers:', editedAnswers);
       
-      // Calculate new score
-      const totalPoints = editedAnswers.reduce((sum, answer) => sum + answer.points, 0);
-      const earnedPoints = editedAnswers.reduce((sum, answer) => sum + (answer.isCorrect ? answer.points : 0), 0);
-      const newScore = Math.round((earnedPoints / totalPoints) * 100);
+      // Calculate new score with proper validation
+      const totalPoints = editedAnswers.reduce((sum, answer) => sum + (answer.points || 0), 0);
+      const earnedPoints = editedAnswers.reduce((sum, answer) => sum + (answer.isCorrect ? (answer.points || 0) : 0), 0);
+      
+      // Ensure we don't divide by zero and handle edge cases
+      let newScore = 0;
+      if (totalPoints > 0) {
+        newScore = Math.round((earnedPoints / totalPoints) * 100);
+      }
+      
+      // Ensure score is a valid number between 0 and 100
+      newScore = Math.max(0, Math.min(100, newScore || 0));
+      
       const passed = newScore >= (selectedAttempt.quizId?.passingScore || 70);
 
       console.log('Calculated new score:', newScore, 'passed:', passed);
+      console.log('Total points:', totalPoints, 'Earned points:', earnedPoints);
+
+      // Final validation before sending
+      if (typeof newScore !== 'number' || isNaN(newScore)) {
+        toast.error('Invalid score calculation. Please try again.');
+        return;
+      }
 
       const updatedAttempt = {
         answers: editedAnswers,
@@ -290,13 +347,20 @@ export default function ResultsReviewPage() {
 
       console.log('Sending update request with data:', updatedAttempt);
 
+      // Add timeout for update request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
       const response = await fetch(`/api/quiz-attempts/${selectedAttempt._id}`, {
         method: 'PUT',
+        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(updatedAttempt),
       });
+
+      clearTimeout(timeoutId);
 
       console.log('Response status:', response.status);
 
@@ -335,11 +399,23 @@ export default function ResultsReviewPage() {
       } else {
         const errorData = await response.json();
         console.error('Update failed:', errorData);
-        toast.error(errorData.error || 'Failed to update results');
+        
+        if (response.status === 408) {
+          toast.error('Request timeout. Please try again.');
+        } else if (response.status === 503) {
+          toast.error('Service temporarily unavailable. Please try again.');
+        } else {
+          toast.error(errorData.error || 'Failed to update results');
+        }
       }
     } catch (error) {
       console.error('Error updating attempt:', error);
-      toast.error('Failed to update results');
+      
+      if (error.name === 'AbortError') {
+        toast.error('Request timeout. Please try again.');
+      } else {
+        toast.error('Failed to update results');
+      }
     } finally {
       setSavingChanges(false);
     }
